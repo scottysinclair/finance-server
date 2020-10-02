@@ -2,7 +2,6 @@ package scott.financeserver
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import scott.barleydb.api.core.Environment
 import scott.barleydb.bootstrap.EnvironmentDef
 import scott.barleydb.server.jdbc.persist.QuickHackSequenceGenerator
 
