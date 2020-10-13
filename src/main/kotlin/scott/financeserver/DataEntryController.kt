@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
-import scott.barleydb.api.core.proxy.EntityProxy
 import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.QAccount
@@ -14,12 +13,13 @@ import scott.financeserver.data.query.QCategory
 import scott.financeserver.data.query.QMonth
 import scott.financeserver.data.query.QTransaction
 import java.math.BigDecimal
-import java.time.*
+import java.time.LocalDate
+import java.time.Month
+import java.time.ZoneId
 import java.util.*
 import javax.annotation.PostConstruct
-
-import scott.financeserver.data.model.Category as ECategory
 import scott.financeserver.data.model.Account as EAccount
+import scott.financeserver.data.model.Category as ECategory
 import scott.financeserver.data.model.Transaction as ETransaction
 
 data class CategoriesResponse(val categories : List<Category>)
@@ -30,8 +30,9 @@ data class Transaction(val id : Long?, val account : String, val day : Int, val 
 
 data class MonthResponse(val id : Long, val starting : Long, val startingBalance : BigDecimal, val finished : Boolean)
 
+
 @RestController
-class Controller {
+class DataEntryController {
 
     @Autowired
     private lateinit var env: Environment
