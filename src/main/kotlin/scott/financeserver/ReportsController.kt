@@ -2,6 +2,7 @@ package scott.financeserver
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.stream.ObjectInputStream
@@ -41,9 +42,10 @@ class ReportsController  {
 
 
     @GetMapping("/timeseries/categories")
-    fun getCategoriesTimeseries() : TimeSeriesReport = DataEntityContext(env).let { ctx ->
+    fun getCategoriesTimeseries(@RequestParam comment :String?) : TimeSeriesReport = DataEntityContext(env).let { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             joinToCategory()
+            if (comment != null) where(comment().like("%${comment.toUpperCase()}%").or(comment().like("%${comment.toLowerCase()}%")))
             orderBy(date(), true)
         }).toSequence()
             .sequenceOfMonthlyTransactions()
