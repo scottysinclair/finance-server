@@ -6,6 +6,7 @@ import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
 import java.util.UUID;
+import java.util.Date;
 import java.math.BigDecimal;
 
 /**
@@ -18,16 +19,14 @@ public class EndOfMonthStatement extends AbstractCustomEntityProxy {
 
   private final ValueNode id;
   private final RefNodeProxyHelper account;
-  private final ValueNode year;
-  private final ValueNode month;
+  private final ValueNode date;
   private final ValueNode amount;
 
   public EndOfMonthStatement(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
     account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
-    year = entity.getChild("year", ValueNode.class, true);
-    month = entity.getChild("month", ValueNode.class, true);
+    date = entity.getChild("date", ValueNode.class, true);
     amount = entity.getChild("amount", ValueNode.class, true);
   }
 
@@ -43,20 +42,12 @@ public class EndOfMonthStatement extends AbstractCustomEntityProxy {
     setToRefNode(this.account.refNode, account);
   }
 
-  public Integer getYear() {
-    return year.getValue();
+  public Date getDate() {
+    return date.getValue();
   }
 
-  public void setYear(Integer year) {
-    this.year.setValue(year);
-  }
-
-  public Integer getMonth() {
-    return month.getValue();
-  }
-
-  public void setMonth(Integer month) {
-    this.month.setValue(month);
+  public void setDate(Date date) {
+    this.date.setValue(date);
   }
 
   public BigDecimal getAmount() {

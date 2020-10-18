@@ -10,22 +10,26 @@ import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
 import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
-import scott.financeserver.data.model.Category
 import scott.financeserver.data.query.QAccount
 import scott.financeserver.data.query.QCategory
+import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
 import scott.financeserver.import.BankAustriaRow
 import scott.financeserver.import.parseBankAustria
+import java.math.BigDecimal
+import java.time.ZoneId
 import java.util.*
 import javax.annotation.PostConstruct
-
 import scott.financeserver.data.model.Account as EAccount
-import scott.financeserver.data.model.Transaction as ETransaction
 import scott.financeserver.data.model.Category as ECategory
+import scott.financeserver.data.model.Transaction as ETransaction
+import scott.financeserver.data.model.EndOfMonthStatement as EEndOfMonthStatement
 
 
 data class Account(val id: UUID, val name: String, val numberOfTransactions : Long)
 data class AccountResponse(val accounts: List<Account>)
+
+data class UploadResult(val count : Int? = null, val error : String? = null)
 
 @RestController
 class UploadController {
@@ -75,31 +79,98 @@ class UploadController {
     }.also { Runtime.getRuntime().gc() }
 
     @PostMapping("upload/{accountName}")
-    fun uploadTransactions(@PathVariable accountName : String, @RequestParam file : MultipartFile) = DataEntityContext(env).use { ctx ->
+    fun uploadTransactions(@PathVariable accountName : String, @RequestParam file : MultipartFile, @RequestParam currentBalance : BigDecimal?) = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
-        val account = ctx.performQuery(QAccount().apply { name().equal(accountName) }).singleResult
-        parseBankAustria(file.bytes) { seq ->
-            seq.map { row ->
-                ctx.newModel(ETransaction::class.java).let { t->
-                    t.content = toContent(row)
-                    t.contentHash = toHash(row)
-                    t.account = account
-                    t.date = row.date
-                    t.category = analyseCategory(row)
-                    t.userCategorized = false
-                    t.amount = row.amount
-                    t.comment = null
-                    t.important = false
+        runCatching {
+            val account = ctx.performQuery(QAccount().apply { name().equal(accountName) }).singleResult
+            var foundMatch: ETransaction? = null
+            parseBankAustria(file.bytes) { seq ->
+                seq.filter { foundMatch == null }
+                    .map { row ->
+                        Triple(toContent(row), toHash(row), row)
+                    }.map { (content, hash, row) ->
+                        foundMatch = ctx.performQuery(QTransaction().apply { contentHash().equal(hash) }).list.firstOrNull()
+                        if (foundMatch == null)
+                            ctx.persist(PersistRequest().insert(ctx.newModel(ETransaction::class.java).let { t ->
+                                t.content = content
+                                t.contentHash = hash
+                                t.account = account
+                                t.date = row.date
+                                t.category = analyseCategory(row)
+                                t.userCategorized = false
+                                t.amount = row.amount
+                                t.comment = null
+                                t.important = false
+                            })).let { 1 }
+                        else 0
+                    }.sum()
+            }.let { count ->
+                if (count > 0 && foundMatch != null) {
+                    generateEndOfMonthStatementsFrom(account, foundMatch!!, ctx)
+                    UploadResult(count = count)
+                } else if (count > 0 && currentBalance != null){
+                    generateEndOfMonthStatementsGoingBackwards(account, currentBalance, ctx)
+                    UploadResult(count = count)
                 }
-            }
-                .batchesOf(100)
-                .forEach { listOfT ->
-                    ctx.persist(PersistRequest().apply {
-                        listOfT.forEach { t -> insert(t) }
-                    })
-                }
+                else if (count == 0) UploadResult(error = "no records")
+                else UploadResult(error = "current balance required")
+            }.apply { if (count != null) ctx.commit() }
         }
-        ctx.commit()
+        .getOrElse { x ->
+            runCatching { ctx.rollback() }.onFailure { x2 -> println(x2) }
+            UploadResult(error = "unknown")
+        }
+    }
+
+    private fun generateEndOfMonthStatementsGoingBackwards(account : EAccount, newstBalance: BigDecimal, ctx : DataEntityContext) {
+        var balance = newstBalance
+        ctx.streamObjectQuery(QTransaction().apply {
+            where(accountId().equal(account.id))
+            orderBy(date(), false)
+        })
+        .toSequence()
+        .sequenceOfMonthlyTransactions()
+        .map {
+            balance -= it.map(ETransaction::getAmount)
+                .reduce { a, b -> a + b }
+            it.first().date.toEndOfLastMonth() to balance
+        }
+        .forEach { (endOfMonth, balance) ->
+            ctx.persist(PersistRequest().insert(ctx.newModel(EEndOfMonthStatement::class.java).also {
+                it.account = account
+                it.date = endOfMonth
+                it.amount = balance
+            }))
+        }
+
+    }
+
+    private fun generateEndOfMonthStatementsFrom(account : EAccount, transaction : ETransaction, ctx : DataEntityContext) {
+        val fromEndOfMonth = transaction.date.toEndOfLastMonth()
+        val endOfLastMonthBalance = ctx.performQuery(QEndOfMonthStatement().apply {
+            where(accountId().equal(account.id))
+            and(date().equal(fromEndOfMonth))
+        }).singleResult.amount
+
+        var balance = endOfLastMonthBalance
+
+        ctx.streamObjectQuery(QTransaction().apply {
+            where(accountId().equal(account.id))
+            and(date().greater(fromEndOfMonth))
+            orderBy(date(), true)
+        }).toSequence()
+            .sequenceOfMonthlyTransactions()
+            .map {
+                balance += it.map(ETransaction::getAmount).reduce{a, b->a+b}
+                it.first().date.toEndOfMonth() to balance
+            }
+            .forEach { (endOfMonth, balance) ->
+                ctx.persist(PersistRequest().save(ctx.newModel(EEndOfMonthStatement::class.java).also {
+                    it.account = account
+                    it.date = endOfMonth
+                    it.amount = balance
+                }))
+            }
     }
 
     private fun analyseCategory(row: BankAustriaRow): ECategory {
@@ -107,15 +178,30 @@ class UploadController {
     }
 }
 
-fun <T> Sequence<T>.batchesOf(num : Int) = iterator().let { i ->
-    generateSequence {
-        val list = mutableListOf<T>()
-        while (i.hasNext() && list.size < num) {
-            list.add(i.next())
-        }
-        list
-    }
+private fun Date.startOfDay(): Date {
+    TODO("Not yet implemented")
 }
+
+private fun Date.toEndOfLastMonth() = toInstant().atZone(ZoneId.of("Europoe/Vienna")).toLocalDateTime()
+        .withDayOfMonth(1)
+        .withHour(0)
+        .withMinute(0)
+        .withSecond(0)
+        .withNano(0)
+        .minusNanos(1).let {
+            Date.from(it.atZone(ZoneId.of("Europoe/Vienna")).toInstant())
+        }
+
+private fun Date.toEndOfMonth() = toInstant().atZone(ZoneId.of("Europoe/Vienna")).toLocalDateTime()
+    .withDayOfMonth(1)
+    .withHour(0)
+    .withMinute(0)
+    .withSecond(0)
+    .withNano(0)
+    .plusMonths(1)
+    .minusNanos(1).let {
+        Date.from(it.atZone(ZoneId.of("Europoe/Vienna")).toInstant())
+    }
 
 fun toContent(row : BankAustriaRow) =
     row.run {listOf(date, currency, amount.toString(), bookingText, reason, senderBic) }

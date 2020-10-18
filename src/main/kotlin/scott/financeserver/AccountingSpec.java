@@ -98,9 +98,7 @@ public class AccountingSpec extends StaticDefinitions {
 
         public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
-        public static final NodeSpec year = mandatoryIntValue();
-
-        public static final NodeSpec month = mandatoryIntValue();
+        public static final NodeSpec date = mandatoryDate();
 
         public static final NodeSpec amount = mandatoryDecimal(9, 2);
     }

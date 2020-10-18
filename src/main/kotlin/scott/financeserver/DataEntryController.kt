@@ -10,7 +10,7 @@ import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.QAccount
 import scott.financeserver.data.query.QCategory
-import scott.financeserver.data.query.QMonth
+import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -28,7 +28,7 @@ data class Category(val id : UUID, val name : String)
 data class TransactionsResponse(val transactions: List<Transaction>)
 data class Transaction(val id : UUID, val account : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
 
-data class MonthResponse(val id : UUID, val starting : Long, val startingBalance : BigDecimal)
+data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
 
 
 @RestController
@@ -103,18 +103,18 @@ class DataEntryController {
 
     @GetMapping("/month/{year}/{month}")
     fun getMonth(@PathVariable year : Int, @PathVariable month : Int) : ResponseEntity<MonthResponse> {
-        val from = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
+        val from = Date.from(LocalDate.of(year, Month.of(month - 1), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
 
         return DataEntityContext(env).use { ctx ->
-            ctx.performQuery(QMonth().apply {
-                where(starting().equal(from))
+            ctx.performQuery(QEndOfMonthStatement().apply {
+                where(date().equal(from))
             })
                 .singleResult?.let {
                     ResponseEntity.ok(
                         MonthResponse(
                             id = it.id,
-                            starting = it.starting.time,
-                            startingBalance = it.startingBalance)
+                            date = it.date.time,
+                            startingBalance = it.amount)
                     )
                 } ?: ResponseEntity.notFound().build()
         }

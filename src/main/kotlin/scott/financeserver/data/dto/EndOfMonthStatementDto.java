@@ -3,6 +3,7 @@ package scott.financeserver.data.dto;
 import scott.barleydb.api.dto.BaseDto;
 
 import java.util.UUID;
+import java.util.Date;
 import java.math.BigDecimal;
 
 /**
@@ -15,8 +16,7 @@ public class EndOfMonthStatementDto extends BaseDto {
 
   private UUID id;
   private AccountDto account;
-  private Integer year;
-  private Integer month;
+  private Date date;
   private BigDecimal amount;
 
   public EndOfMonthStatementDto() {
@@ -38,20 +38,12 @@ public class EndOfMonthStatementDto extends BaseDto {
     this.account = account;
   }
 
-  public Integer getYear() {
-    return year;
+  public Date getDate() {
+    return date;
   }
 
-  public void setYear(Integer year) {
-    this.year = year;
-  }
-
-  public Integer getMonth() {
-    return month;
-  }
-
-  public void setMonth(Integer month) {
-    this.month = month;
+  public void setDate(Date date) {
+    this.date = date;
   }
 
   public BigDecimal getAmount() {

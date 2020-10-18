@@ -6,6 +6,7 @@ import scott.barleydb.api.query.QueryObject;
 import scott.financeserver.data.model.EndOfMonthStatement;
 import java.util.UUID;
 import scott.financeserver.data.query.QAccount;
+import java.util.Date;
 import java.math.BigDecimal;
 
 /**
@@ -50,12 +51,8 @@ public class QEndOfMonthStatement extends QueryObject<EndOfMonthStatement> {
     return account;
   }
 
-  public QProperty<Integer> year() {
-    return new QProperty<Integer>(this, "year");
-  }
-
-  public QProperty<Integer> month() {
-    return new QProperty<Integer>(this, "month");
+  public QProperty<Date> date() {
+    return new QProperty<Date>(this, "date");
   }
 
   public QProperty<BigDecimal> amount() {

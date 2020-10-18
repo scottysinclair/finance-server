@@ -29,7 +29,7 @@ fun main() {
     }
 }
 */
-fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) -> R)  {
+fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) -> R) : R {
     var headers : List<String>? = null
     CSVParser(bytes.inputStream().reader(Charsets.UTF_8), CSVFormat.newFormat(';'))
         .iterator().asSequence().filter { r ->

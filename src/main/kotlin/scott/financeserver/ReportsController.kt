@@ -9,13 +9,13 @@ import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityContext
 import scott.barleydb.api.stream.ObjectInputStream
 import scott.financeserver.data.DataEntityContext
-import scott.financeserver.data.query.QMonth
+import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.*
 
-import scott.financeserver.data.model.Month as EMonth
+import scott.financeserver.data.model.EndOfMonthStatement as EEndOfMonthStatement
 import scott.financeserver.data.model.Transaction as ETransaction
 
 
@@ -39,8 +39,8 @@ class ReportsController  {
 
     @GetMapping("/years")
     fun getYears()  = DataEntityContext(env).use { ctx ->
-        ctx.streamObjectQuery(QMonth().apply {
-            orderBy(starting(), true)
+        ctx.streamObjectQuery(QEndOfMonthStatement().apply {
+            orderBy(date(), true)
         }).toSequence()
             .toSequenceOfYears()
             .toList()
@@ -51,12 +51,12 @@ class ReportsController  {
 
     @GetMapping("/timeseries/balance")
     fun getBalanceTimeseries() = DataEntityContext(env).use { ctx ->
-        ctx.performQuery(QMonth().apply {
-            orderBy(starting(), true)
-        }).list.map { month ->
+        ctx.performQuery(QEndOfMonthStatement().apply {
+            orderBy(date(), true)
+        }).list.map { endOfMonth ->
             TimePoint(
-                date = toDateString(month.starting),
-                amount = month.startingBalance)
+                date = toDateString(endOfMonth.date.plusOneDay()),
+                amount = endOfMonth.amount)
         }.let {
             TimeSeriesReport(listOf(TimeSeries("balance", it)))
         }
@@ -175,8 +175,8 @@ fun List<Pair<Date, Map<String, BigDecimal>>>.extractTimeSeriesFor(category: Str
     )
 }
 
-fun Sequence<EMonth>.toSequenceOfYears() : Sequence<Int> {
-    return map { it.starting.toYear() }
+fun Sequence<EEndOfMonthStatement>.toSequenceOfYears() : Sequence<Int> {
+    return map { it.date.toYear() }
         .distinct()
 }
 
@@ -208,6 +208,12 @@ fun <T> Iterator<T>.next(predicate : (T) -> Boolean) : T? {
 fun Date.plusOneMonth() = GregorianCalendar().let {
     it.time = this
     it.add(Calendar.MONTH, 1)
+    it.time
+}
+
+fun Date.plusOneDay() = GregorianCalendar().let {
+    it.time = this
+    it.add(Calendar.DAY_OF_MONTH, 1)
     it.time
 }
 
