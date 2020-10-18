@@ -23,12 +23,12 @@ import scott.financeserver.data.model.Category as ECategory
 import scott.financeserver.data.model.Transaction as ETransaction
 
 data class CategoriesResponse(val categories : List<Category>)
-data class Category(val id : Long, val name : String)
+data class Category(val id : UUID, val name : String)
 
 data class TransactionsResponse(val transactions: List<Transaction>)
-data class Transaction(val id : Long?, val account : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
+data class Transaction(val id : UUID, val account : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
 
-data class MonthResponse(val id : Long, val starting : Long, val startingBalance : BigDecimal, val finished : Boolean)
+data class MonthResponse(val id : UUID, val starting : Long, val startingBalance : BigDecimal)
 
 
 @RestController
@@ -45,7 +45,7 @@ class DataEntryController {
 
     @PostConstruct
     fun postConstruct() {
-        DataEntityContext(env).let { ctx ->
+        DataEntityContext(env).use { ctx ->
             categories = ctx.performQuery(QCategory()).list
             accounts = ctx.performQuery(QAccount()).list
         }
@@ -53,18 +53,19 @@ class DataEntryController {
 
 
     @GetMapping("/categories")
-    fun getCategories() = DataEntityContext(env)
-        .performQuery(QCategory()).list.map {
+    fun getCategories() = DataEntityContext(env).use {ctx ->
+            ctx.performQuery(QCategory()).list.map {
             Category(
                 id = it.id,
                 name = it.name
             )
         }
         .let(::CategoriesResponse)
+    }
 
     @PostMapping("/transaction", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun saveTransactions(@RequestBody transaction: Transaction) : Transaction {
-        DataEntityContext(env).let { ctx ->
+        DataEntityContext(env).use { ctx ->
             val acc = ctx.newModel(EAccount::class.java, lookupAccount(transaction.account).id, EntityConstraint.mustExistInDatabase())
             val cat = ctx.newModel(ECategory::class.java, lookupCategory(transaction.category).id, EntityConstraint.mustExistInDatabase())
             return ctx.newModel(ETransaction::class.java, transaction.id, EntityConstraint.dontFetch()).apply {
@@ -88,33 +89,35 @@ class DataEntryController {
         val from = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
         val to = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )).plusMonths(1).toInstant())
 
-        return DataEntityContext(env)
-            .performQuery(QTransaction().apply {
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QTransaction().apply {
                 joinToCategory()
                 joinToAccount()
                 where(date().greaterOrEqual(from).and(date().lessOrEqual(to)))
                 orderBy(date(), true)
             })
-            .list.map{ it.forClient() }
-            .let(::TransactionsResponse)
+                .list.map { it.forClient() }
+                .let(::TransactionsResponse)
+        }
     }
 
     @GetMapping("/month/{year}/{month}")
     fun getMonth(@PathVariable year : Int, @PathVariable month : Int) : ResponseEntity<MonthResponse> {
         val from = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
 
-        return DataEntityContext(env)
-            .performQuery(QMonth().apply {
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QMonth().apply {
                 where(starting().equal(from))
             })
-            .singleResult?.let {
-                ResponseEntity.ok(MonthResponse(
-                    id = it.id,
-                    starting = it.starting.time,
-                    startingBalance = it.startingBalance,
-                    finished = it.finished
-                ))
-            } ?: ResponseEntity.notFound().build()
+                .singleResult?.let {
+                    ResponseEntity.ok(
+                        MonthResponse(
+                            id = it.id,
+                            starting = it.starting.time,
+                            startingBalance = it.startingBalance)
+                    )
+                } ?: ResponseEntity.notFound().build()
+        }
     }
 /*
     @PostMapping("/month/{year}/{month}")
@@ -179,4 +182,4 @@ fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c
     }
 
 
-data class MonthData(val id : Long, val starting : Long, val startingBalance : BigDecimal, val finished : Boolean, val transactions: List<Transaction>)
+data class MonthData(val id : Long, val starting : Long, val startingBalance : BigDecimal, val transactions: List<Transaction>)

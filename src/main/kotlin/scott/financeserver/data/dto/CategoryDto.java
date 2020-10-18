@@ -2,6 +2,9 @@ package scott.financeserver.data.dto;
 
 import scott.barleydb.api.dto.BaseDto;
 
+import scott.barleydb.api.dto.DtoList;
+
+import java.util.UUID;
 
 /**
  * Generated from Entity Specification
@@ -11,18 +14,18 @@ import scott.barleydb.api.dto.BaseDto;
 public class CategoryDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
-  private Long id;
+  private UUID id;
   private String name;
-  private Integer monthlyLimit;
+  private DtoList<CategoryMatcherDto> matchers = new DtoList<>();
 
   public CategoryDto() {
   }
 
-  public Long getId() {
+  public UUID getId() {
     return id;
   }
 
-  public void setId(Long id) {
+  public void setId(UUID id) {
     this.id = id;
   }
 
@@ -34,12 +37,8 @@ public class CategoryDto extends BaseDto {
     this.name = name;
   }
 
-  public Integer getMonthlyLimit() {
-    return monthlyLimit;
-  }
-
-  public void setMonthlyLimit(Integer monthlyLimit) {
-    this.monthlyLimit = monthlyLimit;
+  public DtoList<CategoryMatcherDto> getMatchers() {
+    return matchers;
   }
   public String toString() {
     return getClass().getSimpleName() + "[id = " + getId() + "]";

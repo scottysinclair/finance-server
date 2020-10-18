@@ -3,6 +3,7 @@ package scott.financeserver.data.model;
 import scott.barleydb.api.core.entity.Entity;
 import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
+import java.util.UUID;
 
 /**
  * Generated from Entity Specification
@@ -21,7 +22,7 @@ public class Account extends AbstractCustomEntityProxy {
     name = entity.getChild("name", ValueNode.class, true);
   }
 
-  public Long getId() {
+  public UUID getId() {
     return id.getValue();
   }
 

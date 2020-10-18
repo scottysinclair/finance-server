@@ -11,8 +11,11 @@ public class DataProxyFactory implements ProxyFactory {
 
   @SuppressWarnings("unchecked")
   public <T> T newProxy(Entity entity) throws ProxyCreationException {
-    if (entity.getEntityType().getInterfaceName().equals(Month.class.getName())) {
-      return (T) new Month(entity);
+    if (entity.getEntityType().getInterfaceName().equals(EndOfMonthStatement.class.getName())) {
+      return (T) new EndOfMonthStatement(entity);
+    }
+    if (entity.getEntityType().getInterfaceName().equals(CategoryMatcher.class.getName())) {
+      return (T) new CategoryMatcher(entity);
     }
     if (entity.getEntityType().getInterfaceName().equals(Category.class.getName())) {
       return (T) new Category(entity);

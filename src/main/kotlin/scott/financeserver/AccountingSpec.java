@@ -1,6 +1,8 @@
 package scott.financeserver;
 
 import static scott.barleydb.api.specification.CoreSpec.mandatoryRefersTo;
+import static scott.barleydb.api.specification.CoreSpec.ownsMany;
+import static scott.barleydb.api.specification.CoreSpec.uniqueConstraint;
 
 import scott.barleydb.api.core.types.JavaType;
 import scott.barleydb.api.core.types.JdbcType;
@@ -12,6 +14,7 @@ import scott.barleydb.api.specification.KeyGenSpec;
 import scott.barleydb.api.specification.NodeSpec;
 import scott.barleydb.api.specification.RelationSpec;
 import scott.barleydb.api.specification.SuppressionSpec;
+import scott.barleydb.api.specification.constraint.UniqueConstraintSpec;
 import scott.barleydb.bootstrap.GenerateModels;
 import scott.barleydb.build.specification.staticspec.Entity;
 import scott.barleydb.build.specification.staticspec.StaticDefinitions;
@@ -20,11 +23,12 @@ public class AccountingSpec extends StaticDefinitions {
 
     /**
      * generate the query and model classes for the spec.
-     * @param args
      */
     public static void main(String args[]) {
         GenerateModels.execute(AccountingSpec.class);
     }
+
+
 
     public AccountingSpec() {
         super("scott.financeserver.data");
@@ -38,16 +42,28 @@ public class AccountingSpec extends StaticDefinitions {
 
     @Entity("SS_ACCOUNT")
     public static class Account {
-        public static final NodeSpec id = longPrimaryKey();
+        public static final NodeSpec id = uuidPrimaryKey();
 
         public static final NodeSpec name = name();
+
+        public static final UniqueConstraintSpec uniqueName = uniqueConstraint(name);
     }
 
     @Entity("SS_TRANSACTION")
     public static class Transaction {
-        public static final NodeSpec id = longPrimaryKey();
+        public static final NodeSpec id = uuidPrimaryKey();
+
+        public static final NodeSpec content = mandatoryVarchar(8000);
+
+        public static final NodeSpec contentHash = mandatoryVarchar(40);
+
+        public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
         public static final NodeSpec date = mandatoryTimestamp();
+
+        public static final NodeSpec category = mandatoryRefersTo(Category.class);
+
+        public static final NodeSpec userCategorized = mandatoryBoolean();
 
         public static final NodeSpec amount = mandatoryDecimal(9, 2);
 
@@ -55,30 +71,38 @@ public class AccountingSpec extends StaticDefinitions {
 
         public static final NodeSpec important = mandatoryBoolean();
 
-        public static final NodeSpec account = mandatoryRefersTo(Account.class);
-
-        public static final NodeSpec category = mandatoryRefersTo(Category.class);
-
+        public static final UniqueConstraintSpec uniqueContentHash = uniqueConstraint(contentHash);
     }
 
     @Entity("SS_CATEGORY")
     public static class Category {
-        public static final NodeSpec id = longPrimaryKey();
+        public static final NodeSpec id = uuidPrimaryKey();
 
         public static final NodeSpec name = mandatoryVarchar(100);
 
-        public static final NodeSpec monthlyLimit = optionalInteger("MONTH_LIMIT");
+        public static final NodeSpec matchers = ownsMany(CategoryMatcher.class, CategoryMatcher.category);
     }
 
-    @Entity("SS_MONTH")
-    public static class Month {
-        public static final NodeSpec id = longPrimaryKey();
+    @Entity("SS_CATEGORY_MATCHER")
+    public static class CategoryMatcher {
+        public static final NodeSpec id = uuidPrimaryKey();
 
-        public static final NodeSpec starting = mandatoryDate();
+        public static final NodeSpec category = mandatoryRefersTo(Category.class);
 
-        public static final NodeSpec startingBalance = mandatoryDecimal("STARTING_BAL", 9, 2);
+        public static final NodeSpec pattern = mandatoryVarchar(200);
+    }
 
-        public static final NodeSpec finished = mandatoryBoolean();
+        @Entity("SS_MONTH")
+    public static class EndOfMonthStatement {
+        public static final NodeSpec id = uuidPrimaryKey();
+
+        public static final NodeSpec account = mandatoryRefersTo(Account.class);
+
+        public static final NodeSpec year = mandatoryIntValue();
+
+        public static final NodeSpec month = mandatoryIntValue();
+
+        public static final NodeSpec amount = mandatoryDecimal(9, 2);
     }
 
     @Override
@@ -109,12 +133,11 @@ public class AccountingSpec extends StaticDefinitions {
         return spec;
     }
 
-    public static NodeSpec longPrimaryKey() {
-        NodeSpec spec = mandatoryLongValue();
+    public static NodeSpec uuidPrimaryKey() {
+        NodeSpec spec = mandatoryUuidValue(null);
         spec.setKeyGenSpec(KeyGenSpec.FRAMEWORK);
         spec.setColumnName("ID");
         spec.setPrimaryKey(true);
-        spec.setNullable(Nullable.NOT_NULL);
         spec.setSuppression(SuppressionSpec.GENERATED_CODE_SETTER);
         return spec;
     }
@@ -139,6 +162,28 @@ public class AccountingSpec extends StaticDefinitions {
 
     public static NodeSpec mandatoryLongValue() {
         return mandatoryLongValue(null);
+    }
+
+    public static NodeSpec mandatoryUuidValue(String columnName) {
+        NodeSpec spec = new NodeSpec();
+        spec.setColumnName(columnName);
+        spec.setJavaType(JavaType.UUID);
+        spec.setJdbcType(JdbcType.VARCHAR);
+        spec.setLength(36);
+        spec.setNullable(Nullable.NOT_NULL);
+        return spec;
+    }
+
+    public static NodeSpec mandatoryIntValue() {
+        return mandatoryIntValue(null);
+    }
+    public static NodeSpec mandatoryIntValue(String columnName) {
+        NodeSpec spec = new NodeSpec();
+        spec.setColumnName(columnName);
+        spec.setJavaType(JavaType.INTEGER);
+        spec.setJdbcType(JdbcType.INT);
+        spec.setNullable(Nullable.NOT_NULL);
+        return spec;
     }
 
     public static NodeSpec mandatoryLongValue(String columnName) {

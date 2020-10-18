@@ -5,6 +5,7 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
+import java.util.UUID;
 import java.util.Date;
 import java.math.BigDecimal;
 
@@ -17,26 +18,56 @@ public class Transaction extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
 
   private final ValueNode id;
+  private final ValueNode content;
+  private final ValueNode contentHash;
+  private final RefNodeProxyHelper account;
   private final ValueNode date;
+  private final RefNodeProxyHelper category;
+  private final ValueNode userCategorized;
   private final ValueNode amount;
   private final ValueNode comment;
   private final ValueNode important;
-  private final RefNodeProxyHelper account;
-  private final RefNodeProxyHelper category;
 
   public Transaction(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
+    content = entity.getChild("content", ValueNode.class, true);
+    contentHash = entity.getChild("contentHash", ValueNode.class, true);
+    account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
     date = entity.getChild("date", ValueNode.class, true);
+    category = new RefNodeProxyHelper(entity.getChild("category", RefNode.class, true));
+    userCategorized = entity.getChild("userCategorized", ValueNode.class, true);
     amount = entity.getChild("amount", ValueNode.class, true);
     comment = entity.getChild("comment", ValueNode.class, true);
     important = entity.getChild("important", ValueNode.class, true);
-    account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
-    category = new RefNodeProxyHelper(entity.getChild("category", RefNode.class, true));
   }
 
-  public Long getId() {
+  public UUID getId() {
     return id.getValue();
+  }
+
+  public String getContent() {
+    return content.getValue();
+  }
+
+  public void setContent(String content) {
+    this.content.setValue(content);
+  }
+
+  public String getContentHash() {
+    return contentHash.getValue();
+  }
+
+  public void setContentHash(String contentHash) {
+    this.contentHash.setValue(contentHash);
+  }
+
+  public Account getAccount() {
+    return super.getFromRefNode(account.refNode);
+  }
+
+  public void setAccount(Account account) {
+    setToRefNode(this.account.refNode, account);
   }
 
   public Date getDate() {
@@ -45,6 +76,22 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setDate(Date date) {
     this.date.setValue(date);
+  }
+
+  public Category getCategory() {
+    return super.getFromRefNode(category.refNode);
+  }
+
+  public void setCategory(Category category) {
+    setToRefNode(this.category.refNode, category);
+  }
+
+  public Boolean getUserCategorized() {
+    return userCategorized.getValue();
+  }
+
+  public void setUserCategorized(Boolean userCategorized) {
+    this.userCategorized.setValue(userCategorized);
   }
 
   public BigDecimal getAmount() {
@@ -69,21 +116,5 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setImportant(Boolean important) {
     this.important.setValue(important);
-  }
-
-  public Account getAccount() {
-    return super.getFromRefNode(account.refNode);
-  }
-
-  public void setAccount(Account account) {
-    setToRefNode(this.account.refNode, account);
-  }
-
-  public Category getCategory() {
-    return super.getFromRefNode(category.refNode);
-  }
-
-  public void setCategory(Category category) {
-    setToRefNode(this.category.refNode, category);
   }
 }

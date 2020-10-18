@@ -4,6 +4,7 @@ import scott.barleydb.api.query.JoinType;
 import scott.barleydb.api.query.QProperty;
 import scott.barleydb.api.query.QueryObject;
 import scott.financeserver.data.model.Account;
+import java.util.UUID;
 
 /**
  * Generated from Entity Specification
@@ -21,8 +22,8 @@ public class QAccount extends QueryObject<Account> {
   }
 
 
-  public QProperty<Long> id() {
-    return new QProperty<Long>(this, "id");
+  public QProperty<UUID> id() {
+    return new QProperty<UUID>(this, "id");
   }
 
   public QProperty<String> name() {

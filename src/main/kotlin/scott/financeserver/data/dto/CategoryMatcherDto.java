@@ -9,13 +9,14 @@ import java.util.UUID;
  *
  * @author exssinclair
  */
-public class AccountDto extends BaseDto {
+public class CategoryMatcherDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
   private UUID id;
-  private String name;
+  private CategoryDto category;
+  private String pattern;
 
-  public AccountDto() {
+  public CategoryMatcherDto() {
   }
 
   public UUID getId() {
@@ -26,12 +27,20 @@ public class AccountDto extends BaseDto {
     this.id = id;
   }
 
-  public String getName() {
-    return name;
+  public CategoryDto getCategory() {
+    return category;
   }
 
-  public void setName(String name) {
-    this.name = name;
+  public void setCategory(CategoryDto category) {
+    this.category = category;
+  }
+
+  public String getPattern() {
+    return pattern;
+  }
+
+  public void setPattern(String pattern) {
+    this.pattern = pattern;
   }
   public String toString() {
     return getClass().getSimpleName() + "[id = " + getId() + "]";

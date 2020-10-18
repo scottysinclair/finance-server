@@ -4,10 +4,11 @@ import scott.barleydb.api.query.JoinType;
 import scott.barleydb.api.query.QProperty;
 import scott.barleydb.api.query.QueryObject;
 import scott.financeserver.data.model.Transaction;
-import java.util.Date;
-import java.math.BigDecimal;
+import java.util.UUID;
 import scott.financeserver.data.query.QAccount;
+import java.util.Date;
 import scott.financeserver.data.query.QCategory;
+import java.math.BigDecimal;
 
 /**
  * Generated from Entity Specification
@@ -25,28 +26,20 @@ public class QTransaction extends QueryObject<Transaction> {
   }
 
 
-  public QProperty<Long> id() {
-    return new QProperty<Long>(this, "id");
+  public QProperty<UUID> id() {
+    return new QProperty<UUID>(this, "id");
   }
 
-  public QProperty<Date> date() {
-    return new QProperty<Date>(this, "date");
+  public QProperty<String> content() {
+    return new QProperty<String>(this, "content");
   }
 
-  public QProperty<BigDecimal> amount() {
-    return new QProperty<BigDecimal>(this, "amount");
+  public QProperty<String> contentHash() {
+    return new QProperty<String>(this, "contentHash");
   }
 
-  public QProperty<String> comment() {
-    return new QProperty<String>(this, "comment");
-  }
-
-  public QProperty<Boolean> important() {
-    return new QProperty<Boolean>(this, "important");
-  }
-
-  public QProperty<Long> accountId() {
-    return new QProperty<Long>(this, "account");
+  public QProperty<UUID> accountId() {
+    return new QProperty<UUID>(this, "account");
   }
 
   public QAccount joinToAccount() {
@@ -67,8 +60,12 @@ public class QTransaction extends QueryObject<Transaction> {
     return account;
   }
 
-  public QProperty<Long> categoryId() {
-    return new QProperty<Long>(this, "category");
+  public QProperty<Date> date() {
+    return new QProperty<Date>(this, "date");
+  }
+
+  public QProperty<UUID> categoryId() {
+    return new QProperty<UUID>(this, "category");
   }
 
   public QCategory joinToCategory() {
@@ -87,5 +84,21 @@ public class QTransaction extends QueryObject<Transaction> {
     QCategory category = new QCategory(this);
     addExists(category, "category");
     return category;
+  }
+
+  public QProperty<Boolean> userCategorized() {
+    return new QProperty<Boolean>(this, "userCategorized");
+  }
+
+  public QProperty<BigDecimal> amount() {
+    return new QProperty<BigDecimal>(this, "amount");
+  }
+
+  public QProperty<String> comment() {
+    return new QProperty<String>(this, "comment");
+  }
+
+  public QProperty<Boolean> important() {
+    return new QProperty<Boolean>(this, "important");
   }
 }

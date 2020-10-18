@@ -4,6 +4,8 @@ import scott.barleydb.api.query.JoinType;
 import scott.barleydb.api.query.QProperty;
 import scott.barleydb.api.query.QueryObject;
 import scott.financeserver.data.model.Category;
+import java.util.UUID;
+import scott.financeserver.data.query.QCategoryMatcher;
 
 /**
  * Generated from Entity Specification
@@ -21,15 +23,29 @@ public class QCategory extends QueryObject<Category> {
   }
 
 
-  public QProperty<Long> id() {
-    return new QProperty<Long>(this, "id");
+  public QProperty<UUID> id() {
+    return new QProperty<UUID>(this, "id");
   }
 
   public QProperty<String> name() {
     return new QProperty<String>(this, "name");
   }
 
-  public QProperty<Integer> monthlyLimit() {
-    return new QProperty<Integer>(this, "monthlyLimit");
+  public QCategoryMatcher joinToMatchers() {
+    QCategoryMatcher matchers = new QCategoryMatcher();
+    addLeftOuterJoin(matchers, "matchers");
+    return matchers;
+  }
+
+  public QCategoryMatcher joinToMatchers(JoinType joinType) {
+    QCategoryMatcher matchers = new QCategoryMatcher();
+    addJoin(matchers, "matchers", joinType);
+    return matchers;
+  }
+
+  public QCategoryMatcher existsMatchers() {
+    QCategoryMatcher matchers = new QCategoryMatcher(this);
+    addExists(matchers, "matchers");
+    return matchers;
   }
 }
