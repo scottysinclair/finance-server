@@ -103,8 +103,7 @@ class DataEntryController {
 
     @GetMapping("/month/{year}/{month}")
     fun getMonth(@PathVariable year : Int, @PathVariable month : Int) : ResponseEntity<MonthResponse> {
-        val from = Date.from(LocalDate.of(year, Month.of(month - 1), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
-
+        val from = toEndOfLastMonth(year, month)
         return DataEntityContext(env).use { ctx ->
             ctx.performQuery(QEndOfMonthStatement().apply {
                 where(date().equal(from))

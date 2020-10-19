@@ -15,9 +15,10 @@ public class TransactionDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
   private UUID id;
+  private AccountDto account;
+  private FeedDto feed;
   private String content;
   private String contentHash;
-  private AccountDto account;
   private Date date;
   private CategoryDto category;
   private Boolean userCategorized;
@@ -36,6 +37,22 @@ public class TransactionDto extends BaseDto {
     this.id = id;
   }
 
+  public AccountDto getAccount() {
+    return account;
+  }
+
+  public void setAccount(AccountDto account) {
+    this.account = account;
+  }
+
+  public FeedDto getFeed() {
+    return feed;
+  }
+
+  public void setFeed(FeedDto feed) {
+    this.feed = feed;
+  }
+
   public String getContent() {
     return content;
   }
@@ -50,14 +67,6 @@ public class TransactionDto extends BaseDto {
 
   public void setContentHash(String contentHash) {
     this.contentHash = contentHash;
-  }
-
-  public AccountDto getAccount() {
-    return account;
-  }
-
-  public void setAccount(AccountDto account) {
-    this.account = account;
   }
 
   public Date getDate() {

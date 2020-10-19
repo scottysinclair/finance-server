@@ -18,9 +18,10 @@ public class Transaction extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
 
   private final ValueNode id;
+  private final RefNodeProxyHelper account;
+  private final RefNodeProxyHelper feed;
   private final ValueNode content;
   private final ValueNode contentHash;
-  private final RefNodeProxyHelper account;
   private final ValueNode date;
   private final RefNodeProxyHelper category;
   private final ValueNode userCategorized;
@@ -31,9 +32,10 @@ public class Transaction extends AbstractCustomEntityProxy {
   public Transaction(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
+    account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
+    feed = new RefNodeProxyHelper(entity.getChild("feed", RefNode.class, true));
     content = entity.getChild("content", ValueNode.class, true);
     contentHash = entity.getChild("contentHash", ValueNode.class, true);
-    account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
     date = entity.getChild("date", ValueNode.class, true);
     category = new RefNodeProxyHelper(entity.getChild("category", RefNode.class, true));
     userCategorized = entity.getChild("userCategorized", ValueNode.class, true);
@@ -44,6 +46,22 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public UUID getId() {
     return id.getValue();
+  }
+
+  public Account getAccount() {
+    return super.getFromRefNode(account.refNode);
+  }
+
+  public void setAccount(Account account) {
+    setToRefNode(this.account.refNode, account);
+  }
+
+  public Feed getFeed() {
+    return super.getFromRefNode(feed.refNode);
+  }
+
+  public void setFeed(Feed feed) {
+    setToRefNode(this.feed.refNode, feed);
   }
 
   public String getContent() {
@@ -60,14 +78,6 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setContentHash(String contentHash) {
     this.contentHash.setValue(contentHash);
-  }
-
-  public Account getAccount() {
-    return super.getFromRefNode(account.refNode);
-  }
-
-  public void setAccount(Account account) {
-    setToRefNode(this.account.refNode, account);
   }
 
   public Date getDate() {

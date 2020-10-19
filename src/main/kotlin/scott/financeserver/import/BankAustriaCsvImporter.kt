@@ -31,7 +31,7 @@ fun main() {
 */
 fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) -> R) : R {
     var headers : List<String>? = null
-    CSVParser(bytes.inputStream().reader(Charsets.UTF_8), CSVFormat.newFormat(';'))
+    return CSVParser(bytes.inputStream().reader(Charsets.UTF_8), CSVFormat.newFormat(';'))
         .iterator().asSequence().filter { r ->
             if (headers == null) {
                 headers = r.toList().map { it.trim() }
@@ -47,9 +47,9 @@ fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) ->
                 date = parseDate(it[DATE]!!),
                 currency = it[CURRENCY]!!,
                 bookingText = it[BOOKING_TEXT]!!,
-                amount = it[AMOUNT]!!.toBigDecimal(),
+                amount = it[AMOUNT]!!.replace(".", "").replace(',', '.').toBigDecimal(),
                 reason = it[REASON],
-                senderBic = it[SENDER_BIC])
+                senderBic = it[SENDER_BIC]).also { println(it) }
         }
         .let { block(it) }
 }
@@ -62,6 +62,8 @@ data class BankAustriaRow(
     val reason : String?,
     val senderBic : String?)
 
-fun parseDate(text : String) = SimpleDateFormat("").parse(text)
+val sdf = SimpleDateFormat("dd.MM.yyyy")
+@Synchronized
+fun parseDate(text : String) = sdf.parse(text)
 
 fun print(map : Map<String,String>, key : String) = print("$key ${map[key]}   ")

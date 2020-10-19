@@ -23,6 +23,9 @@ public class DataProxyFactory implements ProxyFactory {
     if (entity.getEntityType().getInterfaceName().equals(Transaction.class.getName())) {
       return (T) new Transaction(entity);
     }
+    if (entity.getEntityType().getInterfaceName().equals(Feed.class.getName())) {
+      return (T) new Feed(entity);
+    }
     if (entity.getEntityType().getInterfaceName().equals(Account.class.getName())) {
       return (T) new Account(entity);
     }

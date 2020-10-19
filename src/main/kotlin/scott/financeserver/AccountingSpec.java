@@ -49,15 +49,28 @@ public class AccountingSpec extends StaticDefinitions {
         public static final UniqueConstraintSpec uniqueName = uniqueConstraint(name);
     }
 
+    @Entity("SS_IMPORT")
+    public static class Feed {
+        public static final NodeSpec id = uuidPrimaryKey();
+
+        public static final NodeSpec account = mandatoryRefersTo(Account.class);
+
+        public static final NodeSpec file = mandatoryVarchar(200);
+
+        public static final UniqueConstraintSpec uniqueFile = uniqueConstraint(file);
+    }
+
     @Entity("SS_TRANSACTION")
     public static class Transaction {
         public static final NodeSpec id = uuidPrimaryKey();
 
+        public static final NodeSpec account = mandatoryRefersTo(Account.class);
+
+        public static final NodeSpec feed = mandatoryRefersTo(Feed.class);
+
         public static final NodeSpec content = mandatoryVarchar(8000);
 
         public static final NodeSpec contentHash = mandatoryVarchar(40);
-
-        public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
         public static final NodeSpec date = mandatoryTimestamp();
 
@@ -71,7 +84,7 @@ public class AccountingSpec extends StaticDefinitions {
 
         public static final NodeSpec important = mandatoryBoolean();
 
-        public static final UniqueConstraintSpec uniqueContentHash = uniqueConstraint(contentHash);
+        //TODO: add index for contentHash
     }
 
     @Entity("SS_CATEGORY")
