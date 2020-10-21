@@ -83,6 +83,10 @@ public class QTransaction extends QueryObject<Transaction> {
     return new QProperty<String>(this, "contentHash");
   }
 
+  public QProperty<String> description() {
+    return new QProperty<String>(this, "description");
+  }
+
   public QProperty<Date> date() {
     return new QProperty<Date>(this, "date");
   }

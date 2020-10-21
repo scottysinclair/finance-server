@@ -8,6 +8,8 @@ import scott.barleydb.server.jdbc.persist.QuickHackSequenceGenerator
 @Configuration
 class Configuration {
 
+    val create = false
+
     @Bean
     fun environmentDef() = EnvironmentDef()
             .withSpecs(AccountingSpec::class.java)
@@ -18,7 +20,7 @@ class Configuration {
                 .withPassword("")
                 .end()
             .withDroppingSchema(false)
-            .withSchemaCreation(false)
+            .withSchemaCreation(create)
             .withSequenceGenerator(QuickHackSequenceGenerator::class.java)
             .create()
 

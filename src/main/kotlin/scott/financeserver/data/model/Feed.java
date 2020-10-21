@@ -6,6 +6,7 @@ import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
 import java.util.UUID;
+import java.util.Date;
 
 /**
  * Generated from Entity Specification
@@ -16,18 +17,28 @@ public class Feed extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
 
   private final ValueNode id;
+  private final ValueNode dateImported;
   private final RefNodeProxyHelper account;
   private final ValueNode file;
 
   public Feed(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
+    dateImported = entity.getChild("dateImported", ValueNode.class, true);
     account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
     file = entity.getChild("file", ValueNode.class, true);
   }
 
   public UUID getId() {
     return id.getValue();
+  }
+
+  public Date getDateImported() {
+    return dateImported.getValue();
+  }
+
+  public void setDateImported(Date dateImported) {
+    this.dateImported.setValue(dateImported);
   }
 
   public Account getAccount() {

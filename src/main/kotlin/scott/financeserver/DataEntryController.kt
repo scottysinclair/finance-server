@@ -13,9 +13,7 @@ import scott.financeserver.data.query.QCategory
 import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
 import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.Month
-import java.time.ZoneId
+import java.time.*
 import java.util.*
 import javax.annotation.PostConstruct
 import scott.financeserver.data.model.Account as EAccount
@@ -26,7 +24,7 @@ data class CategoriesResponse(val categories : List<Category>)
 data class Category(val id : UUID, val name : String)
 
 data class TransactionsResponse(val transactions: List<Transaction>)
-data class Transaction(val id : UUID, val account : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
+data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
 
 data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
 
@@ -86,8 +84,8 @@ class DataEntryController {
 
     @GetMapping("/transaction/{year}/{month}")
     fun getTransactions(@PathVariable year : Int, @PathVariable month : Int) : TransactionsResponse {
-        val from = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )  ).toInstant())
-        val to = Date.from(LocalDate.of(year, Month.of(month), 1).atStartOfDay(ZoneId.of( "Europe/Vienna" )).plusMonths(1).toInstant())
+        val from = YearMonth.of(year, month).atDay(1).atStartOfDay().toDate()
+        val to = YearMonth.of(year, month).atEndOfMonth().atTime(LocalTime.MAX).toDate()
 
         return DataEntityContext(env).use { ctx ->
             ctx.performQuery(QTransaction().apply {
@@ -154,22 +152,13 @@ class DataEntryController {
  */
 }
 
-fun toDate(day : Int, month : Int, year : Int) : Date {
-    return GregorianCalendar().apply {
-        set(Calendar.YEAR, year)
-        set(Calendar.MONTH, month)
-        set(Calendar.DAY_OF_MONTH, day)
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.time
-}
+fun toDate(day : Int, month : Int, year : Int) = LocalDate.of(year, month, day).atStartOfDay().toDate()
 
 fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c ->
         Transaction(
             id = id,
             account = account.name,
+            description = description,
             day = c.get(Calendar.DAY_OF_MONTH),
             month = c.get(Calendar.MONTH),
             year = c.get(Calendar.YEAR),
@@ -179,6 +168,3 @@ fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c
             important = important
         )
     }
-
-
-data class MonthData(val id : Long, val starting : Long, val startingBalance : BigDecimal, val transactions: List<Transaction>)

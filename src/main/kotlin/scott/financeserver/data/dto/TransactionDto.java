@@ -19,6 +19,7 @@ public class TransactionDto extends BaseDto {
   private FeedDto feed;
   private String content;
   private String contentHash;
+  private String description;
   private Date date;
   private CategoryDto category;
   private Boolean userCategorized;
@@ -67,6 +68,14 @@ public class TransactionDto extends BaseDto {
 
   public void setContentHash(String contentHash) {
     this.contentHash = contentHash;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
   }
 
   public Date getDate() {

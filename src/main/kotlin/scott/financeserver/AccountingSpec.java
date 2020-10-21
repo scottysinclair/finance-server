@@ -53,6 +53,8 @@ public class AccountingSpec extends StaticDefinitions {
     public static class Feed {
         public static final NodeSpec id = uuidPrimaryKey();
 
+        public static final NodeSpec dateImported = mandatoryTimestamp();
+
         public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
         public static final NodeSpec file = mandatoryVarchar(200);
@@ -71,6 +73,8 @@ public class AccountingSpec extends StaticDefinitions {
         public static final NodeSpec content = mandatoryVarchar(8000);
 
         public static final NodeSpec contentHash = mandatoryVarchar(40);
+
+        public static final NodeSpec description = mandatoryVarchar(8000);
 
         public static final NodeSpec date = mandatoryTimestamp();
 

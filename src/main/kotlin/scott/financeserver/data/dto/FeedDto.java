@@ -3,6 +3,7 @@ package scott.financeserver.data.dto;
 import scott.barleydb.api.dto.BaseDto;
 
 import java.util.UUID;
+import java.util.Date;
 
 /**
  * Generated from Entity Specification
@@ -13,6 +14,7 @@ public class FeedDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
   private UUID id;
+  private Date dateImported;
   private AccountDto account;
   private String file;
 
@@ -25,6 +27,14 @@ public class FeedDto extends BaseDto {
 
   public void setId(UUID id) {
     this.id = id;
+  }
+
+  public Date getDateImported() {
+    return dateImported;
+  }
+
+  public void setDateImported(Date dateImported) {
+    this.dateImported = dateImported;
   }
 
   public AccountDto getAccount() {

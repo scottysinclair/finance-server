@@ -22,6 +22,7 @@ public class Transaction extends AbstractCustomEntityProxy {
   private final RefNodeProxyHelper feed;
   private final ValueNode content;
   private final ValueNode contentHash;
+  private final ValueNode description;
   private final ValueNode date;
   private final RefNodeProxyHelper category;
   private final ValueNode userCategorized;
@@ -36,6 +37,7 @@ public class Transaction extends AbstractCustomEntityProxy {
     feed = new RefNodeProxyHelper(entity.getChild("feed", RefNode.class, true));
     content = entity.getChild("content", ValueNode.class, true);
     contentHash = entity.getChild("contentHash", ValueNode.class, true);
+    description = entity.getChild("description", ValueNode.class, true);
     date = entity.getChild("date", ValueNode.class, true);
     category = new RefNodeProxyHelper(entity.getChild("category", RefNode.class, true));
     userCategorized = entity.getChild("userCategorized", ValueNode.class, true);
@@ -78,6 +80,14 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setContentHash(String contentHash) {
     this.contentHash.setValue(contentHash);
+  }
+
+  public String getDescription() {
+    return description.getValue();
+  }
+
+  public void setDescription(String description) {
+    this.description.setValue(description);
   }
 
   public Date getDate() {

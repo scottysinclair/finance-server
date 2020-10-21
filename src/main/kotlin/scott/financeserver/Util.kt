@@ -1,7 +1,6 @@
 package scott.financeserver
 
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.*
 import java.util.*
 
 fun toEndOfLastMonth(year : Int, month : Int) = LocalDateTime.of(year, month, 1, 0, 0, 0, 0)
@@ -29,3 +28,10 @@ fun Date.toEndOfMonth() = toInstant().atZone(ZoneId.of("Europe/Vienna")).toLocal
     .minusNanos(1).let {
         Date.from(it.atZone(ZoneId.of("Europe/Vienna")).toInstant())
     }
+
+fun Date.endOfDay() : Date  = toInstant().atZone(ZoneId.of("Europe/Vienna")).toLocalDate().atTime(LocalTime.MAX).let {
+    Date.from(it.atZone(ZoneId.of("Europe/Vienna")).toInstant())
+}
+fun LocalDateTime.toDate() = Date.from(atZone(ZoneId.of("Europe/Vienna")).toInstant())
+
+fun Date.toYearMonth() : YearMonth = toInstant().atZone(ZoneId.of("Europe/Vienna")).toLocalDateTime().let { YearMonth.from(it) }

@@ -5,6 +5,7 @@ import scott.barleydb.api.query.QProperty;
 import scott.barleydb.api.query.QueryObject;
 import scott.financeserver.data.model.Feed;
 import java.util.UUID;
+import java.util.Date;
 import scott.financeserver.data.query.QAccount;
 
 /**
@@ -25,6 +26,10 @@ public class QFeed extends QueryObject<Feed> {
 
   public QProperty<UUID> id() {
     return new QProperty<UUID>(this, "id");
+  }
+
+  public QProperty<Date> dateImported() {
+    return new QProperty<Date>(this, "dateImported");
   }
 
   public QProperty<UUID> accountId() {
