@@ -1,7 +1,22 @@
 package scott.financeserver
 
+import scott.financeserver.data.model.Transaction
 import java.time.*
 import java.util.*
+
+fun <T> Sequence<T>.batchesOf(num : Int) : Sequence<List<T>> {
+    var list = mutableListOf<T>()
+    val i = iterator()
+    return generateSequence {
+        while (i.hasNext() && list.size < num) {
+            list.add(i.next())
+        }
+        list.toList().let { result ->
+            if (result.isEmpty()) null
+                else result.also { list.clear() }
+        }
+    }
+}
 
 fun toEndOfLastMonth(year : Int, month : Int) = LocalDateTime.of(year, month, 1, 0, 0, 0, 0)
     .minusNanos(1).let {

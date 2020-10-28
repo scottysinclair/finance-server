@@ -8,6 +8,8 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.multipart.MultipartFile
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
+import scott.barleydb.api.persist.Operation
+import scott.barleydb.api.persist.OperationType
 import scott.barleydb.api.persist.PersistRequest
 import scott.barleydb.api.query.RuntimeProperties
 import scott.financeserver.*
@@ -111,22 +113,77 @@ class UploadController {
             .let { CategoryResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
-    @PutMapping("/category/{categoryName}")
-    fun saveCategory(@PathVariable categoryName : String) = DataEntityContext(env).use { ctx ->
-        ctx.persist(PersistRequest().save(ctx.newModel(ECategory::class.java).also { ec ->
-            ec.name = categoryName
-        }))
-    }.also { Runtime.getRuntime().gc() }
+    @PostMapping("/category")
+    fun saveCategories(@RequestBody categories : List<Category>) = DataEntityContext(env).use { ctx ->
+        ctx.autocommit = false
+        try {
+            ctx.persist(ctx.performQuery(QCategory().apply {
+                where(name().notEqual("unknown"))
+                and(id().notIn(categories.map(Category::id).toSet()))
+            }).list.map { c ->
+                Operation(c, OperationType.DELETE)
+            }.toPersistRequest())
 
-    @PutMapping("/category/{categoryName}/matcher/{pattern}")
-    fun saveCategory(@PathVariable categoryName : String, @PathVariable pattern : String) = DataEntityContext(env).use { ctx ->
-        ctx.performQuery(QCategory().apply { where(name().equal(categoryName)) }).singleResult.let { category ->
-            ctx.persist(PersistRequest().save(ctx.newModel(ECategoryMatcher::class.java).also { ec ->
-                ec.category = category
-                ec.pattern = pattern
-            }))
+            ctx.persist(categories.map { c ->
+                ctx.newModel(ECategory::class.java, c.id, EntityConstraint.dontFetch()).also { ec ->
+                    ec.name = c.name
+                    ec.matchers.apply { clear() }.addAll(c.matchers.map { m ->
+                        ctx.getModelOrNewModel(ECategoryMatcher::class.java, m.id).also { ecm ->
+                            ecm.category = ec
+                            ecm.pattern = m.pattern
+                        }
+                    })
+                }
+            }
+                .map { c ->
+                    Operation(c, OperationType.SAVE)
+                }.toPersistRequest())
+            ctx.commit()
+        }
+        catch(x : Exception) {
+            x.printStackTrace()
+            runCatching { ctx.rollback() }.onFailure { x2 -> x2.printStackTrace() }
         }
     }.also { Runtime.getRuntime().gc() }
+   .also { applyCategories() }
+
+    @PostMapping("/category/apply")
+    fun applyCategories() : Unit = DataEntityContext(env).use { ctx ->
+        ctx.autocommit = false
+        val categories = ctx.performQuery(QCategory().apply {
+            joinToMatchers()
+        }).list
+        val unknownCategory = categories.find { c -> c.name == "unknown" }!!
+        try {
+            ctx.streamObjectQuery(QTransaction().apply {
+                where(userCategorized().equal(false))
+                orderBy(date(), true) })
+                .toSequence()
+                .map { t -> t.category to t.apply { anaylseCategory(t, categories, unknownCategory) } }
+                .filter { (oldCat, t) ->  oldCat.id != t.category.id }
+                .map { (_, t) -> t}
+                .map { t -> Operation(t, OperationType.UPDATE) }
+                .batchesOf(100)
+                .forEach { ops ->
+                    ctx.persist(ops.toPersistRequest())
+                }
+            ctx.commit()
+        }
+        catch(x : Exception) {
+            x.printStackTrace()
+            runCatching { ctx.rollback() }.onFailure { x2 -> x.printStackTrace() }
+        }
+    }
+
+    private val cachedRegex = mutableMapOf<String, Regex>()
+    @Synchronized
+    private fun anaylseCategory(transaction: ETransaction, categories : List<ECategory>, unknownCategory : ECategory)  {
+        transaction.category = categories.find { c ->
+            c.matchers.map { m -> cachedRegex.getOrPut(m.pattern, { Regex(m.pattern, RegexOption.IGNORE_CASE) }) }
+                    .any { regex -> regex.containsMatchIn(transaction.description) }
+        } ?: unknownCategory
+    }
+
 
     @GetMapping("/feed")
     fun getFeeds() = DataEntityContext(env).use { ctx ->
@@ -244,7 +301,7 @@ class UploadController {
                             t.contentHash = hash
                             t.description = "${row.bookingText} ${row.reason} ${row.senderBic}"
                             t.date = row.date
-                            t.category = analyseCategory(row, categories)
+                            t.category = unknownCategory(categories)
                             t.userCategorized = false
                             t.amount = row.amount
                             t.comment = null
@@ -263,6 +320,7 @@ class UploadController {
                     else if (count == 0) UploadResult(error = "no records")
                     else UploadResult(error = "current balance required")
                 }.apply { if (count != null) ctx.commit() }
+                .also { applyCategories() }
             }
                 .getOrElse { x ->
                     x.printStackTrace()
@@ -325,10 +383,12 @@ class UploadController {
             }
     }
 
-    private fun analyseCategory(row: BankAustriaRow, categories : List<ECategory>): ECategory {
+    private fun unknownCategory(categories : List<ECategory>): ECategory {
         return categories.filter { it.name == "unknown" }.first()
     }
 }
+
+fun List<Operation>.toPersistRequest() = PersistRequest().also { pr ->forEach{ op -> pr.add(op) } }
 
 
 fun toContent(row : BankAustriaRow) =
