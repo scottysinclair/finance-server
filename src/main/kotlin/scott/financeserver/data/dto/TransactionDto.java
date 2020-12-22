@@ -17,6 +17,7 @@ public class TransactionDto extends BaseDto {
   private UUID id;
   private AccountDto account;
   private FeedDto feed;
+  private Integer feedRecordNumber;
   private String content;
   private String contentHash;
   private String description;
@@ -26,6 +27,7 @@ public class TransactionDto extends BaseDto {
   private BigDecimal amount;
   private String comment;
   private Boolean important;
+  private Boolean duplicate;
 
   public TransactionDto() {
   }
@@ -52,6 +54,14 @@ public class TransactionDto extends BaseDto {
 
   public void setFeed(FeedDto feed) {
     this.feed = feed;
+  }
+
+  public Integer getFeedRecordNumber() {
+    return feedRecordNumber;
+  }
+
+  public void setFeedRecordNumber(Integer feedRecordNumber) {
+    this.feedRecordNumber = feedRecordNumber;
   }
 
   public String getContent() {
@@ -124,6 +134,14 @@ public class TransactionDto extends BaseDto {
 
   public void setImportant(Boolean important) {
     this.important = important;
+  }
+
+  public Boolean getDuplicate() {
+    return duplicate;
+  }
+
+  public void setDuplicate(Boolean duplicate) {
+    this.duplicate = duplicate;
   }
   public String toString() {
     return getClass().getSimpleName() + "[id = " + getId() + "]";

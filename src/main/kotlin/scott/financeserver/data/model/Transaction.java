@@ -20,6 +20,7 @@ public class Transaction extends AbstractCustomEntityProxy {
   private final ValueNode id;
   private final RefNodeProxyHelper account;
   private final RefNodeProxyHelper feed;
+  private final ValueNode feedRecordNumber;
   private final ValueNode content;
   private final ValueNode contentHash;
   private final ValueNode description;
@@ -29,12 +30,14 @@ public class Transaction extends AbstractCustomEntityProxy {
   private final ValueNode amount;
   private final ValueNode comment;
   private final ValueNode important;
+  private final ValueNode duplicate;
 
   public Transaction(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
     account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
     feed = new RefNodeProxyHelper(entity.getChild("feed", RefNode.class, true));
+    feedRecordNumber = entity.getChild("feedRecordNumber", ValueNode.class, true);
     content = entity.getChild("content", ValueNode.class, true);
     contentHash = entity.getChild("contentHash", ValueNode.class, true);
     description = entity.getChild("description", ValueNode.class, true);
@@ -44,6 +47,7 @@ public class Transaction extends AbstractCustomEntityProxy {
     amount = entity.getChild("amount", ValueNode.class, true);
     comment = entity.getChild("comment", ValueNode.class, true);
     important = entity.getChild("important", ValueNode.class, true);
+    duplicate = entity.getChild("duplicate", ValueNode.class, true);
   }
 
   public UUID getId() {
@@ -64,6 +68,14 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setFeed(Feed feed) {
     setToRefNode(this.feed.refNode, feed);
+  }
+
+  public Integer getFeedRecordNumber() {
+    return feedRecordNumber.getValue();
+  }
+
+  public void setFeedRecordNumber(Integer feedRecordNumber) {
+    this.feedRecordNumber.setValue(feedRecordNumber);
   }
 
   public String getContent() {
@@ -136,5 +148,13 @@ public class Transaction extends AbstractCustomEntityProxy {
 
   public void setImportant(Boolean important) {
     this.important.setValue(important);
+  }
+
+  public Boolean getDuplicate() {
+    return duplicate.getValue();
+  }
+
+  public void setDuplicate(Boolean duplicate) {
+    this.duplicate.setValue(duplicate);
   }
 }

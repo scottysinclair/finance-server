@@ -75,6 +75,10 @@ public class QTransaction extends QueryObject<Transaction> {
     return feed;
   }
 
+  public QProperty<Integer> feedRecordNumber() {
+    return new QProperty<Integer>(this, "feedRecordNumber");
+  }
+
   public QProperty<String> content() {
     return new QProperty<String>(this, "content");
   }
@@ -127,5 +131,9 @@ public class QTransaction extends QueryObject<Transaction> {
 
   public QProperty<Boolean> important() {
     return new QProperty<Boolean>(this, "important");
+  }
+
+  public QProperty<Boolean> duplicate() {
+    return new QProperty<Boolean>(this, "duplicate");
   }
 }

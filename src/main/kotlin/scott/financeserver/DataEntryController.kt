@@ -91,7 +91,7 @@ class DataEntryController {
             ctx.performQuery(QTransaction().apply {
                 joinToCategory()
                 joinToAccount()
-                where(date().greaterOrEqual(from).and(date().lessOrEqual(to)))
+                where(duplicate().equal(false).and(date().greaterOrEqual(from).and(date().lessOrEqual(to))))
                 orderBy(date(), true)
             })
                 .list.map { it.forClient() }

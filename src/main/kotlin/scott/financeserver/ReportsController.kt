@@ -68,7 +68,8 @@ class ReportsController  {
         ctx.streamObjectQuery(QTransaction().apply {
             select(id(), categoryId(), amount())
             joinToCategory()
-            if (comment != null) where(comment().like("%${comment.toUpperCase()}%").or(comment().like("%${comment.toLowerCase()}%")))
+            where(duplicate().equal(false))
+            if (comment != null) and(comment().like("%${comment.toUpperCase()}%").or(comment().like("%${comment.toLowerCase()}%")))
             if (description != null) and(description().like("%${description.toUpperCase()}%").or(description().like("%${description.toLowerCase()}%")))
             orderBy(date(), true)
         }).toSequence()
@@ -87,7 +88,8 @@ class ReportsController  {
     fun getCategoryTotalsForYear(@PathVariable year :String) = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             joinToCategory()
-            where(date().greaterOrEqual(startOfYear(year)))
+            where(duplicate().equal(false))
+            and(date().greaterOrEqual(startOfYear(year)))
             and(date().less(startOfYear(year + 1)))
             orderBy(date(), true)
         }).toSequence()
@@ -114,7 +116,6 @@ class ReportsController  {
     }
 }
 
-
 /**
  * Merge maps reducing conflicting values
  */
@@ -129,31 +130,36 @@ fun <T> ObjectInputStream<T>.toSequence() : Sequence<T> = generateSequence {
         }
     }
 
-fun Sequence<ETransaction>.sequenceOfMonthlyTransactions() : Sequence<List<ETransaction>> {
-    var currentMonth = -1
-    var list = mutableListOf<ETransaction>()
+fun <E,T> Sequence<T>.sequenceOfLists(extract : (T) -> E) : Sequence<List<T>> {
+    var currentExtract : E? = null
+    var list = mutableListOf<T>()
     val i = iterator()
     return generateSequence {
         while(i.hasNext() && i.next().let { t ->
                 list.add(t)
-                t.date.toMonth() == currentMonth
+                extract(t) == currentExtract
             });
-            if (i.hasNext()) {
-                list.subList(0, list.size-1).let {
-                    it.toList().also { _ ->
-                        it.clear()
-                        currentMonth = list.first().date.toMonth()
-                    }
+        if (i.hasNext()) {
+            list.subList(0, list.size-1).let {
+                it.toList().also { _ ->
+                    it.clear()
+                    currentExtract = extract(list.first())
                 }
             }
-            else if (list.isNotEmpty()) list.toList().also { list.clear() } else null
         }
-        .filter { it.isNotEmpty() }
-        .map { it.also { println("Month with ${it.size} transactions ")} }
+        else if (list.isNotEmpty()) list.toList().also { list.clear() } else null
+    }
+    .filter { it.isNotEmpty() }
+    .map { it.also { println("Month with ${it.size} transactions ")} }
 }
+
+fun Sequence<ETransaction>.sequenceOfMonthlyTransactions() = sequenceOfLists { t -> t.date.toMonth()  }
+    .map { it.also { println("Month with ${it.size} transactions ")} }
+
 
 fun Sequence<List<ETransaction>>.sequenceOfSummedCategories() : Sequence<Pair<Date, Map<String,BigDecimal>>> {
     return map {
+        //TODO: start of next month????
         it.first().date.plusOneMonth() to
         it.groupBy { t -> t.category.name }
             .mapValues { entry ->  entry.value.map(ETransaction::getAmount).reduce{a,b -> a+b}}

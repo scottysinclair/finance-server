@@ -17,20 +17,32 @@ public class Feed extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
 
   private final ValueNode id;
+  private final ValueNode contentHash;
   private final ValueNode dateImported;
   private final RefNodeProxyHelper account;
   private final ValueNode file;
+  private final ValueNode state;
 
   public Feed(Entity entity) {
     super(entity);
     id = entity.getChild("id", ValueNode.class, true);
+    contentHash = entity.getChild("contentHash", ValueNode.class, true);
     dateImported = entity.getChild("dateImported", ValueNode.class, true);
     account = new RefNodeProxyHelper(entity.getChild("account", RefNode.class, true));
     file = entity.getChild("file", ValueNode.class, true);
+    state = entity.getChild("state", ValueNode.class, true);
   }
 
   public UUID getId() {
     return id.getValue();
+  }
+
+  public String getContentHash() {
+    return contentHash.getValue();
+  }
+
+  public void setContentHash(String contentHash) {
+    this.contentHash.setValue(contentHash);
   }
 
   public Date getDateImported() {
@@ -55,5 +67,13 @@ public class Feed extends AbstractCustomEntityProxy {
 
   public void setFile(String file) {
     this.file.setValue(file);
+  }
+
+  public FeedState getState() {
+    return state.getValue();
+  }
+
+  public void setState(FeedState state) {
+    this.state.setValue(state);
   }
 }

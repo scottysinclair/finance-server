@@ -5,6 +5,8 @@ import scott.barleydb.api.dto.BaseDto;
 import java.util.UUID;
 import java.util.Date;
 
+import scott.financeserver.data.model.FeedState;
+
 /**
  * Generated from Entity Specification
  *
@@ -14,9 +16,11 @@ public class FeedDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
   private UUID id;
+  private String contentHash;
   private Date dateImported;
   private AccountDto account;
   private String file;
+  private FeedState state;
 
   public FeedDto() {
   }
@@ -27,6 +31,14 @@ public class FeedDto extends BaseDto {
 
   public void setId(UUID id) {
     this.id = id;
+  }
+
+  public String getContentHash() {
+    return contentHash;
+  }
+
+  public void setContentHash(String contentHash) {
+    this.contentHash = contentHash;
   }
 
   public Date getDateImported() {
@@ -51,6 +63,14 @@ public class FeedDto extends BaseDto {
 
   public void setFile(String file) {
     this.file = file;
+  }
+
+  public FeedState getState() {
+    return state;
+  }
+
+  public void setState(FeedState state) {
+    this.state = state;
   }
   public String toString() {
     return getClass().getSimpleName() + "[id = " + getId() + "]";

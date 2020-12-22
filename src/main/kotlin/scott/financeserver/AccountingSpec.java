@@ -1,5 +1,6 @@
 package scott.financeserver;
 
+import static scott.barleydb.api.specification.CoreSpec.mandatoryEnum;
 import static scott.barleydb.api.specification.CoreSpec.mandatoryRefersTo;
 import static scott.barleydb.api.specification.CoreSpec.ownsMany;
 import static scott.barleydb.api.specification.CoreSpec.uniqueConstraint;
@@ -17,6 +18,7 @@ import scott.barleydb.api.specification.SuppressionSpec;
 import scott.barleydb.api.specification.constraint.UniqueConstraintSpec;
 import scott.barleydb.bootstrap.GenerateModels;
 import scott.barleydb.build.specification.staticspec.Entity;
+import scott.barleydb.build.specification.staticspec.Enumeration;
 import scott.barleydb.build.specification.staticspec.StaticDefinitions;
 
 public class AccountingSpec extends StaticDefinitions {
@@ -49,15 +51,26 @@ public class AccountingSpec extends StaticDefinitions {
         public static final UniqueConstraintSpec uniqueName = uniqueConstraint(name);
     }
 
+    @Enumeration(value = JdbcType.VARCHAR, length = 50)
+    public static class FeedState {
+        public static String IMPORTED = "IMPORTED";
+        public static String DUP_CHECKED = "DUP_CHECKED";
+        public static String STMT_GENERATED = "STMT_GENERATED";
+    }
+
     @Entity("SS_IMPORT")
     public static class Feed {
         public static final NodeSpec id = uuidPrimaryKey();
+
+        public static final NodeSpec contentHash = mandatoryVarchar(40);
 
         public static final NodeSpec dateImported = mandatoryTimestamp();
 
         public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
         public static final NodeSpec file = mandatoryVarchar(200);
+
+        public static final NodeSpec state = mandatoryEnum(FeedState.class);
 
         public static final UniqueConstraintSpec uniqueFile = uniqueConstraint(file);
     }
@@ -69,6 +82,8 @@ public class AccountingSpec extends StaticDefinitions {
         public static final NodeSpec account = mandatoryRefersTo(Account.class);
 
         public static final NodeSpec feed = mandatoryRefersTo(Feed.class);
+
+        public static final NodeSpec feedRecordNumber = mandatoryIntValue();
 
         public static final NodeSpec content = mandatoryVarchar(8000);
 
@@ -88,8 +103,21 @@ public class AccountingSpec extends StaticDefinitions {
 
         public static final NodeSpec important = mandatoryBoolean();
 
+        public static final NodeSpec duplicate = mandatoryBoolean();
+
         //TODO: add index for contentHash
     }
+
+    @Entity("SS_DUPLICATES")
+    public static class Duplicates {
+        public static final NodeSpec id = uuidPrimaryKey();
+        public static final NodeSpec feedHash = mandatoryVarchar(40);
+        public static final NodeSpec feedRecordNumber = mandatoryIntValue();
+        public static final NodeSpec contentHash = mandatoryVarchar(40);
+        public static final NodeSpec content = mandatoryVarchar(8000);
+        public static final UniqueConstraintSpec uniqueDuplicate = uniqueConstraint(feedHash, feedRecordNumber);
+    }
+
 
     @Entity("SS_CATEGORY")
     public static class Category {

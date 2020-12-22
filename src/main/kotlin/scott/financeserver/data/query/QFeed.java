@@ -7,6 +7,7 @@ import scott.financeserver.data.model.Feed;
 import java.util.UUID;
 import java.util.Date;
 import scott.financeserver.data.query.QAccount;
+import scott.financeserver.data.model.FeedState;
 
 /**
  * Generated from Entity Specification
@@ -26,6 +27,10 @@ public class QFeed extends QueryObject<Feed> {
 
   public QProperty<UUID> id() {
     return new QProperty<UUID>(this, "id");
+  }
+
+  public QProperty<String> contentHash() {
+    return new QProperty<String>(this, "contentHash");
   }
 
   public QProperty<Date> dateImported() {
@@ -56,5 +61,9 @@ public class QFeed extends QueryObject<Feed> {
 
   public QProperty<String> file() {
     return new QProperty<String>(this, "file");
+  }
+
+  public QProperty<FeedState> state() {
+    return new QProperty<FeedState>(this, "state");
   }
 }

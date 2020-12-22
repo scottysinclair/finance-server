@@ -14,12 +14,15 @@ import scott.barleydb.api.persist.PersistRequest
 import scott.barleydb.api.query.RuntimeProperties
 import scott.financeserver.*
 import scott.financeserver.data.DataEntityContext
+import scott.financeserver.data.model.Duplicates
+import scott.financeserver.data.model.FeedState
 
 import scott.financeserver.data.query.*
 import scott.financeserver.import.BankAustriaRow
 import scott.financeserver.import.parseBankAustria
 import java.lang.IllegalStateException
 import java.math.BigDecimal
+import java.time.ZoneId
 import java.util.*
 import javax.annotation.PostConstruct
 import scott.financeserver.data.model.Account as EAccount
@@ -32,7 +35,7 @@ import scott.financeserver.data.model.EndOfMonthStatement as EEndOfMonthStatemen
 data class Account(val id: UUID, val name: String, val numberOfTransactions: Long)
 data class AccountResponse(val accounts: List<Account>)
 
-data class Feed(val id: UUID, val file: String, val dateImported: Long)
+data class Feed(val id: UUID, val file: String, val dateImported: Long, val state: String)
 data class FeedResponse(val feeds: List<Feed>)
 
 data class Statement(val id: UUID, val accountId: String, val date: Long, val amount: BigDecimal)
@@ -43,7 +46,9 @@ data class Category(val id: UUID, val name: String, val matchers : List<Category
 data class CategoryMatcher(val id: UUID, val pattern: String)
 data class CategoryResponse(val categories: List<Category>)
 
-data class UploadResult(val count: Int? = null, val error: String? = null)
+data class UploadResult(val feedId : UUID? = null, val count: Int? = null, val error: String? = null, var duplicates : List<Duplicate> = emptyList())
+data class Duplicate(val id : UUID, val recordNumber : Int, val contentHash : String, val content : String, val duplicate : Boolean)
+data class DuplicateCheckResult(val duplicates: List<Duplicate>)
 
 @RestController
 class UploadController {
@@ -78,6 +83,7 @@ class UploadController {
                 name = it.name,
                 numberOfTransactions = ctx.performQuery(QTransaction().apply{
                        where(accountId().equal(it.id))
+                       and(duplicate().equal(false))
                 }).list.size.toLong()
             ) }
             .let { AccountResponse(it) }
@@ -156,7 +162,8 @@ class UploadController {
         val unknownCategory = categories.find { c -> c.name == "unknown" }!!
         try {
             ctx.streamObjectQuery(QTransaction().apply {
-                where(userCategorized().equal(false))
+                where(duplicate().equal(false))
+                and(userCategorized().equal(false))
                 orderBy(date(), true) })
                 .toSequence()
                 .map { t -> t.category to t.apply { anaylseCategory(t, categories, unknownCategory) } }
@@ -193,7 +200,8 @@ class UploadController {
             Feed(
                 id = it.id,
                 file = it.file,
-                dateImported = it.dateImported.time) }
+                dateImported = it.dateImported.time,
+                state = it.state.name) }
             .let { FeedResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
@@ -265,20 +273,20 @@ class UploadController {
         return DataEntityContext(env).use { ctx ->
             ctx.autocommit = false
             val categories = ctx.performQuery(QCategory()).list
-            val alreadyImported = { contentHash : String -> ctx.performQuery(QTransaction().apply {
-                contentHash().equal(contentHash) }).list.isNotEmpty() }
 
             runCatching {
                 val account = ctx.performQuery(QAccount().apply { name().equal(accountName) }).singleResult
                 val feed = ctx.newModel(EFeed::class.java).also {
+                    it.contentHash = toHash(file.bytes)
                     it.account = account
                     it.dateImported = Date()
                     it.file = file.originalFilename
+                    it.state = FeedState.IMPORTED
                 }.also { ctx.persist(PersistRequest().insert(it)) }
 
                 println("Processing bank austria upload...")
                 val hashes = parseBankAustria(file.bytes) { seq ->
-                    seq.map { row -> toHash(row) }.toSet()
+                    seq.map { row -> toHash(row.also { println(row.amount)}) }.toSet()
                 }
                 val matchingHashes = ctx.performQuery(QTransaction().apply {
                         select(id(), contentHash())
@@ -291,12 +299,13 @@ class UploadController {
                         if (row.currency != "EUR") throw IllegalStateException("only EUR please")
                         println("$i, Processing row ${row.date} ${row.amount}")
                         Triple(toContent(row), toHash(row), row)
-                    }.filter { (_, hash, _) -> matchingHashes.contains(hash).not()}
+                    }.filter { (_, hash, _) -> matchingHashes.contains(hash).not()} //ignore if the content hash is already in the DB
                     .toList()
-                    .mapIndexed { i, (content, hash, row) ->
+                    .map {(content, hash, row) ->
                         ctx.persist(PersistRequest().insert(ctx.newModel(ETransaction::class.java).also { t ->
                             t.account = account
                             t.feed = feed
+                            t.feedRecordNumber = row.lineNumber
                             t.content = content
                             t.contentHash = hash
                             t.description = "${row.bookingText} ${row.reason} ${row.senderBic}"
@@ -305,22 +314,29 @@ class UploadController {
                             t.userCategorized = false
                             t.amount = row.amount
                             t.comment = null
+                            t.duplicate = false
                             t.important = false})).let { 1 }.also {
-                            println("$i inserting ${row.date} ${row.amount} $hash")
+                            println("${row.lineNumber} inserting ${row.date} ${row.amount} $hash")
                         }
                         }.sum()
                 }.let { count ->
                     if (count > 0 && matchingHashes.isNotEmpty()) {
+                        //TODO END OF MONTH STATEMENT AFTER DUPLCIATE CHECK
                         generateEndOfMonthStatementsFrom(account, ctx)
-                        UploadResult(count = count)
+                        UploadResult(feedId = feed.id, count = count)
                     } else if (count > 0 && currentBalance != null){
+                        //TODO END OF MONTH STATEMENT AFTER DUPLCIATE CHECK
                         generateEndOfMonthStatementsGoingBackwards(account, currentBalance, ctx)
-                        UploadResult(count = count)
+                        UploadResult(feedId = feed.id, count = count)
                     }
                     else if (count == 0) UploadResult(error = "no records")
                     else UploadResult(error = "current balance required")
-                }.apply { if (count != null) ctx.commit() }
+                }.apply { if (count != null) ctx.commit() else ctx.rollback() }
                 .also { applyCategories() }
+                .apply {
+                    //generate potential duplicates in this feed (feed record 1 may be dup of old feed record N..
+                    duplicates = performDuplicateCheck(account.id, feed.id)
+                }
             }
                 .getOrElse { x ->
                     x.printStackTrace()
@@ -330,10 +346,126 @@ class UploadController {
         }
     }
 
+    private fun performDuplicateCheck(accountId: UUID, feedId: UUID) : List<Duplicate> {
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QFeed().apply { id().equal(feedId) }).singleResult.let { feed ->
+                ctx.performQuery(QDuplicates().apply {
+                    feedHash().equal(feed.contentHash)
+                }).list.let { existingDuplicates ->
+                    ctx.streamObjectQuery(QTransaction().apply {
+                        where(accountId().equal(accountId))
+                        orderBy(date(), true)
+                    }).toSequence()
+                        .sequenceOfLists { t -> t.date.toLocalDate().dayOfMonth }
+                        .flatMap { it.groupBy { t -> t.contentHash }.toList() }
+                        .filter { (_, data) -> data.size > 1 }
+                        .flatMap { (_, data) -> data }
+                        .filter { it.feed.id == feedId }
+                        .map {
+                            existingDuplicates.find { ed -> ed.feedRecordNumber == it.feedRecordNumber && ed.contentHash == it.contentHash }?.let { match ->
+                                Duplicate(
+                                    id = match.id,
+                                    recordNumber = match.feedRecordNumber,
+                                    content = match.content,
+                                    contentHash = match.contentHash,
+                                    duplicate = true)
+                            }
+                            ?: Duplicate(
+                                id = UUID.randomUUID(),
+                                recordNumber = it.feedRecordNumber,
+                                content = if (it.content.length > 120) it.content.substring(0, 120) else it.content,
+                                contentHash = it.contentHash,
+                                duplicate = false)
+                        }
+                        .toList()
+                }
+            }
+        }
+    }
+
+    @GetMapping("duplicateCheck/{feedId}")
+    fun duplicateCheck(@PathVariable feedId : UUID) : DuplicateCheckResult {
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QFeed().apply {
+                id().equal(feedId)
+            }).singleResult.let { feed ->
+                performDuplicateCheck(feed.account.id, feed.id)
+            }
+                .let { DuplicateCheckResult(it) }
+        }
+    }
+
+
+
+    @PostMapping("duplicates/{feedId}")
+    fun saveDuplicates(@PathVariable feedId : UUID, @RequestBody duplicates : Map<String, List<Duplicate>>) : DuplicateCheckResult {
+        return DataEntityContext(env).use { ctx ->
+             ctx.autocommit = false
+             ctx.performQuery(QFeed().apply { where(id().equal(feedId)) }).singleResult.let { feed ->
+                 duplicates.values
+                     .flatMap { dups ->
+                         ctx.performQuery(QDuplicates().apply {
+                             dups.forEach { d -> or(id().equal(d.id)) }
+                         }).list.let { existingDups ->
+                             dups.map { d ->
+                                 existingDups.find { d.id == it.id }?.let { existingD ->
+                                     Operation(existingD, when (d.duplicate) {
+                                         true -> OperationType.UPDATE
+                                         false -> OperationType.DELETE
+                                     })
+                                 } ?: Operation(ctx.newModel(Duplicates::class.java, d.id).apply {
+                                         feedHash = feed.contentHash
+                                         feedRecordNumber = d.recordNumber
+                                         content = d.content
+                                         contentHash = d.contentHash
+                                     }, when (d.duplicate) {
+                                         true -> OperationType.INSERT
+                                         false -> OperationType.NONE
+                                     })
+                             }
+                         }
+                     }
+                     .filter { it.isNone.not() }
+                     .toPersistRequest()
+                     .let {
+                         ctx.persist(it)
+                         ctx.commit()
+                         applyDuplicateFlagOnFeedTransactions(feedId)
+                         performDuplicateCheck(feed.account.id, feed.id).let {
+                             DuplicateCheckResult(it)
+                         }
+                     }
+             }
+        }
+    }
+
+    private fun applyDuplicateFlagOnFeedTransactions(feedId: UUID) {
+        return DataEntityContext(env).use { it.run {
+            autocommit = false
+            performQuery((QFeed().apply { where(id().equal(feedId)) })).singleResult.let { feed ->
+                performQuery(QDuplicates().apply {
+                    where(feedHash().equal(feed.contentHash))
+                }).list.groupBy { d -> d.contentHash }.let { dups ->
+                    performQuery(QTransaction().apply {
+                        where(feedId().equal(feedId))
+                    }).list.let { transactions ->
+                        persist(PersistRequest().apply {
+                            transactions.forEach { t -> save(t.also {
+                                t.duplicate = dups[t.contentHash]?.find { d -> d.feedRecordNumber == t.feedRecordNumber } != null
+                            }) }
+                        })
+                    }
+                }
+            }
+            commit()
+        } }
+    }
+
     private fun generateEndOfMonthStatementsGoingBackwards(account : EAccount, newstBalance: BigDecimal, ctx : DataEntityContext) {
         var balance = newstBalance
         ctx.streamObjectQuery(QTransaction().apply {
-            where(accountId().equal(account.id))
+            where(duplicate().equal(false))
+            and(accountId().equal(account.id))
             orderBy(date(), false)
         })
         .toSequence()
@@ -363,7 +495,8 @@ class UploadController {
         var balance = lastStmt.amount
 
         ctx.streamObjectQuery(QTransaction().apply {
-            where(accountId().equal(account.id))
+            where(duplicate().equal(false))
+            and(accountId().equal(account.id))
             and(date().greater(lastStmt.date))
             orderBy(date(), true)
         }).toSequence()
@@ -390,6 +523,7 @@ class UploadController {
 
 fun List<Operation>.toPersistRequest() = PersistRequest().also { pr ->forEach{ op -> pr.add(op) } }
 
+fun Date.toLocalDate() = toInstant().atZone(ZoneId.of("Europe/Vienna")).toLocalDate()
 
 fun toContent(row : BankAustriaRow) =
     row.run {listOf(date, currency, amount.toString(), bookingText, reason, senderBic) }
@@ -397,3 +531,11 @@ fun toContent(row : BankAustriaRow) =
 
 fun toHash(row : BankAustriaRow) = DigestUtils.sha1Hex(toContent(row))
 
+fun toHash(data : ByteArray) = DigestUtils.sha1Hex(data)
+
+class Four<A,B,C,D>(val first : A, val second : B, val third : C, val fourth : D) {
+    operator fun component1() = first
+    operator fun component2() = second
+    operator fun component3() = third
+    operator fun component4() = fourth
+}

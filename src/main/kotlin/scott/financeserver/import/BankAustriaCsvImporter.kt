@@ -42,12 +42,16 @@ fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) ->
         .map { it.toList().mapIndexed{ i, v ->
            headers!![i] to v.trim()
         }.toMap()}
-        .map {
+        .mapIndexed { lineNr, it ->
             BankAustriaRow(
+                lineNumber = lineNr + 2,
                 date = parseDate(it[DATE]!!),
                 currency = it[CURRENCY]!!,
                 bookingText = it[BOOKING_TEXT]!!,
-                amount = it[AMOUNT]!!.replace(".", "").replace(',', '.').toBigDecimal(),
+                amount = it[AMOUNT]!!.let {
+                    if (it.lastIndexOf(',') > it.lastIndexOf('.')) it.replace(".", "").replace(',', '.').toBigDecimal()
+                    else it.replace(",", "").toBigDecimal()
+                },
                 reason = it[REASON],
                 senderBic = it[SENDER_BIC]).also { println(it) }
         }
@@ -55,6 +59,7 @@ fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) ->
 }
 
 data class BankAustriaRow(
+    val lineNumber : Int,
     val date : Date,
     val currency : String,
     val bookingText : String,
