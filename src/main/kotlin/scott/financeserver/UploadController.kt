@@ -8,10 +8,11 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.multipart.MultipartFile
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
+import scott.barleydb.api.core.entity.EntityConstraint.mustExistInDatabase
+import scott.barleydb.api.core.entity.EntityConstraint.mustNotExistInDatabase
 import scott.barleydb.api.persist.Operation
 import scott.barleydb.api.persist.OperationType
 import scott.barleydb.api.persist.PersistRequest
-import scott.barleydb.api.query.RuntimeProperties
 import scott.financeserver.*
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.model.Duplicates
@@ -31,6 +32,7 @@ import scott.financeserver.data.model.Category as ECategory
 import scott.financeserver.data.model.CategoryMatcher as ECategoryMatcher
 import scott.financeserver.data.model.Transaction as ETransaction
 import scott.financeserver.data.model.EndOfMonthStatement as EEndOfMonthStatement
+import scott.financeserver.data.model.BalanceAt as EBalanceAt
 
 data class Account(val id: UUID, val name: String, val numberOfTransactions: Long)
 data class AccountResponse(val accounts: List<Account>)
@@ -49,6 +51,10 @@ data class CategoryResponse(val categories: List<Category>)
 data class UploadResult(val feedId : UUID? = null, val count: Int? = null, val error: String? = null, var duplicates : List<Duplicate> = emptyList())
 data class Duplicate(val id : UUID, val recordNumber : Int, val contentHash : String, val content : String, val duplicate : Boolean)
 data class DuplicateCheckResult(val duplicates: List<Duplicate>)
+
+data class BalancecAt(val id : UUID, val account : UUID, val time : Long, val amount : BigDecimal)
+data class BalancecAtResponse(val balanceAts : List<BalancecAt>)
+data class PutBalanceAt(val account : UUID, val time : Long, val amount : BigDecimal)
 
 @RestController
 class UploadController {
@@ -192,7 +198,36 @@ class UploadController {
     }
 
 
-    @GetMapping("/feed")
+    @GetMapping("/balanceat/{accountName}")
+    fun getBalanceAts(@PathVariable accountName : String) = DataEntityContext(env).use { ctx ->
+        ctx.performQuery(QAccount().apply {
+            where(name().equal(accountName))
+        }).list.map { account ->
+            ctx.performQuery(QBalanceAt().apply {
+                where(accountId().equal(account.id))
+                orderBy(time(), true)
+            }).list.map { balanceAt ->
+                BalancecAt(
+                    id = balanceAt.id,
+                    account = balanceAt.account.id,
+                    amount = balanceAt.amount,
+                    time = balanceAt.time.time)
+            }
+            .let { BalancecAtResponse(it) }
+        }
+    }.also { Runtime.getRuntime().gc() }
+
+    @PostMapping("/balanceAt/{id}")
+    fun addBalanceAt(@PathVariable id : UUID, @RequestBody data : PutBalanceAt) = DataEntityContext(env).use { ctx ->
+        ctx.persist(PersistRequest().save(ctx.newModel(EBalanceAt::class.java, id).apply {
+            account = ctx.newModel(EAccount::class.java, data.account, mustExistInDatabase())
+            time = Date(data.time)
+            amount = data.amount
+        }))
+    }.also { Runtime.getRuntime().gc() }
+
+
+        @GetMapping("/feed")
     fun getFeeds() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QFeed().apply {
             orderBy(dateImported(), true)
@@ -555,3 +590,4 @@ class Four<A,B,C,D>(val first : A, val second : B, val third : C, val fourth : D
     operator fun component3() = third
     operator fun component4() = fourth
 }
+
