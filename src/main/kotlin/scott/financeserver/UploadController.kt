@@ -320,22 +320,16 @@ class UploadController {
                         }
                         }.sum()
                 }.let { count ->
-                    if (count > 0 && matchingHashes.isNotEmpty()) {
-                        //TODO END OF MONTH STATEMENT AFTER DUPLCIATE CHECK
-                        generateEndOfMonthStatementsFrom(account, ctx)
-                        UploadResult(feedId = feed.id, count = count)
-                    } else if (count > 0 && currentBalance != null){
-                        //TODO END OF MONTH STATEMENT AFTER DUPLCIATE CHECK
-                        generateEndOfMonthStatementsGoingBackwards(account, currentBalance, ctx)
-                        UploadResult(feedId = feed.id, count = count)
+                    if (count > 0) {
+                        ctx.commit()
+                        applyCategories()
+                        regenerateEndOfMonthStatements(account)
+                        UploadResult(feedId = feed.id, count = count, duplicates = performDuplicateCheck(account.id, feed.id))
                     }
-                    else if (count == 0) UploadResult(error = "no records")
-                    else UploadResult(error = "current balance required")
-                }.apply { if (count != null) ctx.commit() else ctx.rollback() }
-                .also { applyCategories() }
-                .apply {
-                    //generate potential duplicates in this feed (feed record 1 may be dup of old feed record N..
-                    duplicates = performDuplicateCheck(account.id, feed.id)
+                    else {
+                        ctx.rollback()
+                        UploadResult(error = "no records")
+                    }
                 }
             }
                 .getOrElse { x ->
@@ -343,6 +337,81 @@ class UploadController {
                     runCatching { ctx.rollback() }.onFailure { x2 -> println(x2) }
                     UploadResult(error = x.stackTraceToString())
                 }
+        }
+    }
+
+    private fun regenerateEndOfMonthStatements(account: EAccount) {
+        DataEntityContext(env).use { ctx ->
+            ctx.autocommit = false
+            runCatching {
+                ctx.performQuery(QEndOfMonthStatement().apply { accountId().equal(account.id) }).list
+                    .map { stmt -> Operation(stmt, OperationType.DELETE) }
+                    .toPersistRequest()
+                    .let { ctx.persist(it) }
+
+                ctx.performQuery(QBalanceAt().apply { orderBy(time(), true) }).list.let { balanceAts ->
+                    balanceAts.firstOrNull()?.let { oldestBalanceAt ->
+                        //find oldest BalanceAt and work our way backwards, generating end month statements
+                        var balance = oldestBalanceAt.amount
+                        ctx.streamObjectQuery(QTransaction().apply {
+                            where(duplicate().equal(false))
+                            and(accountId().equal(account.id))
+                            and(date().less(oldestBalanceAt.time))
+                            orderBy(date(), false)
+                        })
+                            .toSequence()
+                            .sequenceOfMonthlyTransactions()
+                            .map {
+                                balance -= it.map(ETransaction::getAmount)
+                                    .reduce { a, b -> a + b }
+                                it.first().date.toEndOfLastMonth() to balance
+                            }
+                            .toList().let { list ->
+                                list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
+                                    ctx.persist(PersistRequest().insert(ctx.newModel(EEndOfMonthStatement::class.java).also {
+                                        it.account = account
+                                        it.date = endOfMonth
+                                        it.amount = balance
+                                    }))
+                                }
+                            }
+                        //then work forward, adapting to new BalanceAt corrections as we come across them
+                        balance = oldestBalanceAt.amount
+                        balanceAts.removeAt(0) //treat balanceAts as a queue we consume from as we process through the stream
+                        ctx.streamObjectQuery(QTransaction().apply {
+                            where(duplicate().equal(false))
+                            and(accountId().equal(account.id))
+                            and(date().greaterOrEqual(oldestBalanceAt.time))
+                            orderBy(date(), true)
+                        })
+                            .toSequence()
+                            .sequenceOfMonthlyTransactions()
+                            .map {
+                                it.first().date.toEndOfMonth() to (balanceAts.firstOrNull()?.let { nextBalanceAt ->
+                                    var amountBeforeFixed = it.filter { t -> t.date < nextBalanceAt.time }
+                                        .map(ETransaction::getAmount).reduceOrNull { a, b -> a + b } ?: 0.toBigDecimal()
+
+                                    var amountAfterFixed = it.filter { t -> t.date >= nextBalanceAt.time }
+                                        .map(ETransaction::getAmount).reduceOrNull { a, b -> a + b } ?: 0.toBigDecimal()
+                                    when {
+                                        amountAfterFixed > 0.toBigDecimal() -> nextBalanceAt.amount + amountAfterFixed.also { balanceAts.removeFirst() }
+                                        else -> amountBeforeFixed + amountAfterFixed
+                                    }
+                                } ?: it.map(ETransaction::getAmount).reduce { a, b -> a + b })
+                            }
+                            .toList().let { list ->
+                                list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
+                                    ctx.persist(PersistRequest().save(ctx.newModel(EEndOfMonthStatement::class.java).also {
+                                        it.account = account
+                                        it.date = endOfMonth
+                                        it.amount = balance
+                                    }))
+                                }
+                            }
+                    }
+                }
+            }.onFailure { ctx.rollback() }
+            .onSuccess { ctx.commit() }
         }
     }
 
@@ -431,6 +500,7 @@ class UploadController {
                          ctx.persist(it)
                          ctx.commit()
                          applyDuplicateFlagOnFeedTransactions(feedId)
+                         regenerateEndOfMonthStatements(feed.account)
                          performDuplicateCheck(feed.account.id, feed.id).let {
                              DuplicateCheckResult(it)
                          }
@@ -461,60 +531,6 @@ class UploadController {
         } }
     }
 
-    private fun generateEndOfMonthStatementsGoingBackwards(account : EAccount, newstBalance: BigDecimal, ctx : DataEntityContext) {
-        var balance = newstBalance
-        ctx.streamObjectQuery(QTransaction().apply {
-            where(duplicate().equal(false))
-            and(accountId().equal(account.id))
-            orderBy(date(), false)
-        })
-        .toSequence()
-        .sequenceOfMonthlyTransactions()
-        .map {
-            balance -= it.map(ETransaction::getAmount)
-                .reduce { a, b -> a + b }
-            it.first().date.toEndOfLastMonth() to balance
-        }
-        .toList().let { list ->
-                list.subList(0, list.size-1).forEach{(endOfMonth, balance) ->
-                ctx.persist(PersistRequest().insert(ctx.newModel(EEndOfMonthStatement::class.java).also {
-                    it.account = account
-                    it.date = endOfMonth
-                    it.amount = balance
-                }))
-            }
-        }
-    }
-
-    private fun generateEndOfMonthStatementsFrom(account : EAccount, ctx : DataEntityContext) {
-        val lastStmt = ctx.performQuery(QEndOfMonthStatement().apply {
-            where(accountId().equal(account.id))
-            orderBy(date(), false)
-        }, RuntimeProperties().fetchSize(10)).list.first()
-
-        var balance = lastStmt.amount
-
-        ctx.streamObjectQuery(QTransaction().apply {
-            where(duplicate().equal(false))
-            and(accountId().equal(account.id))
-            and(date().greater(lastStmt.date))
-            orderBy(date(), true)
-        }).toSequence()
-            .sequenceOfMonthlyTransactions()
-            .map {
-                balance += it.map(ETransaction::getAmount).reduce{a, b->a+b}
-                it.first().date.toEndOfMonth() to balance
-            }
-            .toList().let { list ->
-                list.subList(0, list.size-1).forEach { (endOfMonth, balance) ->
-                    ctx.persist(PersistRequest().save(ctx.newModel(EEndOfMonthStatement::class.java).also {
-                        it.account = account
-                        it.date = endOfMonth
-                        it.amount = balance
-                    }))
-                }
-            }
-    }
 
     private fun unknownCategory(categories : List<ECategory>): ECategory {
         return categories.filter { it.name == "unknown" }.first()

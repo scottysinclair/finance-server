@@ -51,6 +51,17 @@ public class AccountingSpec extends StaticDefinitions {
         public static final UniqueConstraintSpec uniqueName = uniqueConstraint(name);
     }
 
+    @Entity("SS_BALANCE_AT")
+    public static class BalanceAt {
+        public static final NodeSpec id = uuidPrimaryKey();
+
+        public static final NodeSpec account = mandatoryRefersTo(Account.class);
+
+        public static final NodeSpec amount = mandatoryDecimal(9, 2);
+
+        public static final NodeSpec time = mandatoryTimestamp();
+    }
+
     @Enumeration(value = JdbcType.VARCHAR, length = 50)
     public static class FeedState {
         public static String IMPORTED = "IMPORTED";
@@ -58,7 +69,7 @@ public class AccountingSpec extends StaticDefinitions {
         public static String STMT_GENERATED = "STMT_GENERATED";
     }
 
-    @Entity("SS_IMPORT")
+    @Entity("SS_FEED")
     public static class Feed {
         public static final NodeSpec id = uuidPrimaryKey();
 
