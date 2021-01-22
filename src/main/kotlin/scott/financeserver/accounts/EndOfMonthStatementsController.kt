@@ -55,12 +55,13 @@ class EndOfMonthStatementsController {
                                     it.first().date.toEndOfLastMonth() to balance
                                 }
                                 .toList().let { list ->
-                                    list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
-                                        ctx.persist(PersistRequest().insert(ctx.newModel(EndOfMonthStatement::class.java).also {
-                                            it.account = account
-                                            it.date = endOfMonth
-                                            it.amount = balance
-                                        }))
+                                    if (list.isNotEmpty())
+                                        list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
+                                            ctx.persist(PersistRequest().insert(ctx.newModel(EndOfMonthStatement::class.java).also {
+                                                it.account = account
+                                                it.date = endOfMonth
+                                                it.amount = balance
+                                            }))
                                     }
                                 }
                             //then work forward, adapting to new BalanceAt corrections as we come across them
@@ -88,13 +89,14 @@ class EndOfMonthStatementsController {
                                     } ?: it.map(Transaction::getAmount).reduce { a, b -> a + b })
                                 }
                                 .toList().let { list ->
-                                    list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
-                                        ctx.persist(PersistRequest().save(ctx.newModel(EndOfMonthStatement::class.java).also {
-                                            it.account = account
-                                            it.date = endOfMonth
-                                            it.amount = balance
-                                        }))
-                                    }
+                                    if (list.isNotEmpty())
+                                        list.subList(0, list.size - 1).forEach { (endOfMonth, balance) ->
+                                            ctx.persist(PersistRequest().save(ctx.newModel(EndOfMonthStatement::class.java).also {
+                                                it.account = account
+                                                it.date = endOfMonth
+                                                it.amount = balance
+                                            }))
+                                        }
                                 }
                         }
                     }

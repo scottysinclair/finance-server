@@ -126,6 +126,7 @@ public class AccountingSpec extends StaticDefinitions {
         public static final NodeSpec feedRecordNumber = mandatoryIntValue();
         public static final NodeSpec contentHash = mandatoryVarchar(40);
         public static final NodeSpec content = mandatoryVarchar(8000);
+        public static final NodeSpec duplicate = mandatoryBoolean();
         public static final UniqueConstraintSpec uniqueDuplicate = uniqueConstraint(feedHash, feedRecordNumber);
     }
 
@@ -295,5 +296,4 @@ public class AccountingSpec extends StaticDefinitions {
         spec.setNullable(Nullable.NOT_NULL);
         return spec;
     }
-
 }

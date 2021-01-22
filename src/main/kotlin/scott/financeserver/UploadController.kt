@@ -50,7 +50,7 @@ data class CategoryMatcher(val id: UUID, val pattern: String)
 data class CategoryResponse(val categories: List<Category>)
 
 data class UploadResult(val feedId : UUID? = null, val count: Int? = null, val error: String? = null)
-data class Duplicate(val id : UUID, val recordNumber : Int, val contentHash : String, val content : String, val duplicate : Boolean)
+data class Duplicate(val id : UUID, val recordNumber : Int, val contentHash : String, val content : String, val duplicate : Boolean?)
 data class DuplicateCheckResult(val duplicates: List<Duplicate>)
 
 data class BalancecAt(val id : UUID, val account : UUID, val time : Long, val amount : BigDecimal)
@@ -455,8 +455,9 @@ class UploadController {
                              dups.map { d ->
                                  existingDups.find { d.id == it.id }?.let { existingD ->
                                      Operation(existingD, when (d.duplicate) {
-                                         true -> OperationType.UPDATE
-                                         false -> OperationType.DELETE
+                                         null -> OperationType.DELETE
+                                         else -> OperationType.UPDATE
+
                                      })
                                  } ?: Operation(ctx.newModel(Duplicates::class.java, d.id).apply {
                                          feedHash = feed.contentHash
@@ -464,8 +465,8 @@ class UploadController {
                                          content = d.content
                                          contentHash = d.contentHash
                                      }, when (d.duplicate) {
-                                         true -> OperationType.INSERT
-                                         false -> OperationType.NONE
+                                         null -> OperationType.NONE
+                                         else -> OperationType.INSERT
                                      })
                              }
                          }

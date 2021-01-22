@@ -5,12 +5,13 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
+import scott.barleydb.api.persist.Operation
+import scott.barleydb.api.persist.OperationType
 import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
+import scott.financeserver.data.model.*
 import scott.financeserver.data.model.Category
 import scott.financeserver.data.model.Feed
-import scott.financeserver.data.model.FeedState
-import scott.financeserver.data.model.Transaction
 import scott.financeserver.data.query.*
 import scott.financeserver.import.parseBankAustria
 import scott.financeserver.sequenceOfLists
@@ -190,7 +191,7 @@ class FeedsController {
         }
     }.also { Runtime.getRuntime().gc() }
 
-    @GetMapping("duplicateCheck/{feedId}")
+    @GetMapping("/duplicateCheck/{feedId}")
     fun duplicateCheck(@PathVariable feedId : UUID) : DuplicateCheckResult {
         return DataEntityContext(env).use { ctx ->
             ctx.performQuery(QFeed().apply {
@@ -224,19 +225,86 @@ class FeedsController {
                                     recordNumber = match.feedRecordNumber,
                                     content = match.content,
                                     contentHash = match.contentHash,
-                                    duplicate = true)
+                                    duplicate = match.duplicate)
                             }
                                 ?: Duplicate(
                                     id = UUID.randomUUID(),
                                     recordNumber = it.feedRecordNumber,
                                     content = if (it.content.length > 120) it.content.substring(0, 120) else it.content,
                                     contentHash = it.contentHash,
-                                    duplicate = false)
+                                    duplicate = null)
                         }
                         .toList()
                 }
             }
         }
+    }
+
+    @PostMapping("duplicates/{feedId}")
+    fun saveDuplicates(@PathVariable feedId : UUID, @RequestBody duplicates : Map<String, List<Duplicate>>) : DuplicateCheckResult {
+        return DataEntityContext(env).use { ctx ->
+            ctx.autocommit = false
+            ctx.performQuery(QFeed().apply { where(id().equal(feedId)) }).singleResult.let { feed ->
+                duplicates.values
+                    .flatMap { dups ->
+                        ctx.performQuery(QDuplicates().apply {
+                            dups.forEach { d -> or(id().equal(d.id)) }
+                        }).list.let { existingDups ->
+                            dups.map { d ->
+                                existingDups.find { d.id == it.id }?.let { existingD ->
+                                    Operation(existingD, when (d.duplicate) {
+                                        null -> OperationType.DELETE
+                                        else -> OperationType.UPDATE
+
+                                    })
+                                } ?: Operation(ctx.newModel(Duplicates::class.java, d.id).apply {
+                                    feedHash = feed.contentHash
+                                    feedRecordNumber = d.recordNumber
+                                    content = d.content
+                                    contentHash = d.contentHash
+                                    duplicate = d.duplicate
+                                }, when (d.duplicate) {
+                                    null -> OperationType.NONE
+                                    else -> OperationType.INSERT
+                                })
+                            }
+                        }
+                    }
+                    .filter { it.isNone.not() }
+                    .toPersistRequest()
+                    .let {
+                        ctx.persist(it)
+                        ctx.commit()
+                        applyDuplicateFlagOnFeedTransactions(feedId)
+                        endOfMonthStatementController.regenerateEndOfMonthStatements(feed.account.id)
+                        performDuplicateCheck(feed.account.id, feed.id).let {
+                            DuplicateCheckResult(it)
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun applyDuplicateFlagOnFeedTransactions(feedId: UUID) {
+        return DataEntityContext(env).use { it.run {
+            autocommit = false
+            performQuery((QFeed().apply { where(id().equal(feedId)) })).singleResult.let { feed ->
+                performQuery(QDuplicates().apply {
+                    where(feedHash().equal(feed.contentHash))
+                }).list.groupBy { d -> d.contentHash }.let { dups ->
+                    performQuery(QTransaction().apply {
+                        where(feedId().equal(feedId))
+                    }).list.let { transactions ->
+                        persist(PersistRequest().apply {
+                            transactions.forEach { t -> save(t.also {
+                                t.duplicate = dups[t.contentHash]?.find { d -> d.feedRecordNumber == t.feedRecordNumber } != null
+                            }) }
+                        })
+                    }
+                }
+            }
+            commit()
+        } }
     }
 
 }
