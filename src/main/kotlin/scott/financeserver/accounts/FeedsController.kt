@@ -129,6 +129,7 @@ class FeedsController {
                     if (count > 0) {
                         ctx.commit()
                         categoriesController.applyCategories()
+                        applyDuplicateFlagOnFeedTransactions(feed.id)
                         endOfMonthStatementController.regenerateEndOfMonthStatements(account.id)
                         UploadResult(feedId = feed.id, count = count)
                     } else {
@@ -291,13 +292,15 @@ class FeedsController {
             performQuery((QFeed().apply { where(id().equal(feedId)) })).singleResult.let { feed ->
                 performQuery(QDuplicates().apply {
                     where(feedHash().equal(feed.contentHash))
-                }).list.groupBy { d -> d.contentHash }.let { dups ->
+                }).list.also {
+                    println("Found ${it.size} existing duplicates for Feed ${feedId} ")
+                }.groupBy { d -> d.contentHash }.let { dups ->
                     performQuery(QTransaction().apply {
                         where(feedId().equal(feedId))
                     }).list.let { transactions ->
                         persist(PersistRequest().apply {
                             transactions.forEach { t -> save(t.also {
-                                t.duplicate = dups[t.contentHash]?.find { d -> d.feedRecordNumber == t.feedRecordNumber } != null
+                                t.duplicate = dups[t.contentHash]?.find { d -> d.feedRecordNumber == t.feedRecordNumber && d.duplicate } != null
                             }) }
                         })
                     }
