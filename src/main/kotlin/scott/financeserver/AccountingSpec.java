@@ -110,10 +110,6 @@ public class AccountingSpec extends StaticDefinitions {
 
         public static final NodeSpec amount = mandatoryDecimal(9, 2);
 
-        public static final NodeSpec comment = optionalVarchar(150);
-
-        public static final NodeSpec important = mandatoryBoolean();
-
         public static final NodeSpec duplicate = mandatoryBoolean();
 
         //TODO: add index for contentHash

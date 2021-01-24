@@ -118,9 +118,7 @@ class FeedsController {
                                 t.category = unknownCategory(categories)
                                 t.userCategorized = false
                                 t.amount = row.amount
-                                t.comment = null
                                 t.duplicate = false
-                                t.important = false
                             })).let { 1 }.also {
                                 println("${row.lineNumber} inserting ${row.date} ${row.amount} $hash")
                             }

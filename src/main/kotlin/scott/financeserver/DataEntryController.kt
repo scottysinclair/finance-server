@@ -24,7 +24,7 @@ data class CategoriesResponse(val categories : List<Category>)
 data class Category(val id : UUID, val name : String)
 
 data class TransactionsResponse(val transactions: List<Transaction>)
-data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val category : String, val comment : String?, val important : Boolean, val amount : BigDecimal)
+data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val category : String, val amount : BigDecimal)
 
 data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
 
@@ -69,8 +69,6 @@ class DataEntryController {
             return ctx.newModel(ETransaction::class.java, transaction.id, EntityConstraint.dontFetch()).apply {
                 account = acc
                 date = toDate(transaction.day, transaction.month, transaction.year)
-                comment = transaction.comment
-                important = transaction.important
                 category = cat
                 amount = transaction.amount
             }
@@ -138,8 +136,6 @@ class DataEntryController {
                     save(ctx.newModel(ETransaction::class.java, t.id).apply {
                         account = lookupAccount(t.account)
                         date = toDate(monthData.starting, t.dayInMonth)
-                        comment = t.comment
-                        important = t.important
                         category = lookupCategory(t.category)
                     })
                 }
@@ -163,8 +159,6 @@ fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c
             month = c.get(Calendar.MONTH),
             year = c.get(Calendar.YEAR),
             category = category.name,
-            comment = comment,
             amount = amount,
-            important = important
         )
     }

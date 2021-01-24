@@ -86,12 +86,11 @@ class ReportsController  {
 
 
     @GetMapping("/timeseries/categories")
-    fun getCategoriesTimeseries(@RequestParam description :String?, @RequestParam comment :String?) : TimeSeriesReport = DataEntityContext(env).use { ctx ->
+    fun getCategoriesTimeseries(@RequestParam description :String?) : TimeSeriesReport = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             select(id(), categoryId(), amount())
             joinToCategory()
             where(duplicate().equal(false))
-            if (comment != null) and(comment().like("%${comment.toUpperCase()}%").or(comment().like("%${comment.toLowerCase()}%")))
             if (description != null) and(description().like("%${description.toUpperCase()}%").or(description().like("%${description.toLowerCase()}%")))
             orderBy(date(), true)
         }).toSequence()
