@@ -106,7 +106,7 @@ class ReportsController  {
         }.also { Runtime.getRuntime().gc() }
 
     @GetMapping("/year/{year}/categories")
-    fun getCategoryTotalsForYear(@PathVariable year :String) = DataEntityContext(env).use { ctx ->
+    fun getCategoryTotalsForYear(@PathVariable year :Int) = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             joinToCategory()
             where(duplicate().equal(false))
@@ -124,9 +124,9 @@ class ReportsController  {
                 }.sortedBy { s -> s.name })
             }.also { Runtime.getRuntime().gc() }
 
-    private fun startOfYear(year: String): Date {
+    private fun startOfYear(year: Int): Date {
         return GregorianCalendar().let {
-            it.set(Calendar.YEAR, year.toInt())
+            it.set(Calendar.YEAR, year)
             it.set(Calendar.DAY_OF_YEAR, 1)
             it.set(Calendar.HOUR_OF_DAY, 0)
             it.set(Calendar.MINUTE, 0)
