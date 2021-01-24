@@ -7,15 +7,18 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
+import scott.barleydb.api.core.entity.EntityConstraint.mustNotExistInDatabase
 import scott.barleydb.api.persist.Operation
 import scott.barleydb.api.persist.OperationType
 import scott.financeserver.batchesOf
 import scott.financeserver.data.DataEntityContext
-import scott.financeserver.data.model.Category
 import scott.financeserver.data.model.Transaction
+import scott.financeserver.data.model.Category as ECategory
+import scott.financeserver.data.model.CategoryMatcher as ECategoryMatcher
 import scott.financeserver.data.query.QCategory
 import scott.financeserver.data.query.QTransaction
 import scott.financeserver.toSequence
+import scott.financeserver.upload.Category
 import scott.financeserver.upload.CategoryMatcher
 import scott.financeserver.upload.CategoryResponse
 import scott.financeserver.upload.toPersistRequest
@@ -47,47 +50,83 @@ class CategoriesController {
     }.also { Runtime.getRuntime().gc() }
 
     @PostMapping("/category")
-    fun saveCategories(@RequestBody categories : List<scott.financeserver.upload.Category>) = DataEntityContext(env).use { ctx ->
+    fun saveCategories(@RequestBody categories : List<Category>) = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         try {
             ctx.performQuery(QCategory().apply { where(name().equal("unknown")) }).singleResult.let { unknown ->
-                ctx.streamObjectQuery(QTransaction())
-                    .toSequence()
-                    .map { Operation(it.also { it.category = unknown }, OperationType.UPDATE) }
-                    .batchesOf(100)
-                    .forEach { ops ->
-                        ctx.persist(ops.toPersistRequest())
+                ctx.performQuery(QCategory().apply {
+                    where(name().notEqual("unknown"))
+                    and(id().notIn(categories.map { it.id }.toSet()))
+                }).list.let { categoriesToDelete ->
+                    if (categoriesToDelete.isNotEmpty()) {
+                        //change Ts to category unknown if the C is being deleted
+                        ctx.streamObjectQuery(QTransaction().apply {
+                            where(categoryId().`in`(categoriesToDelete.map { it.id }.toSet()))
+                        })
+                            .toSequence()
+                            .map { Operation(it.also { it.category = unknown }, OperationType.UPDATE) }
+                            .batchesOf(100)
+                            .forEach { ops ->
+                                ctx.persist(ops.toPersistRequest())
+                            }
+                        //actually delete the cateories which have been removed
+                        categoriesToDelete.map {
+                            Operation(it, OperationType.DELETE)
+                        }
+                            .toPersistRequest().let {
+                                ctx.persist(it)
+                            }
                     }
+                }
             }
-            ctx.streamObjectQuery(QCategory().apply { where(name().notEqual("unknown")) })
-                .toSequence()
-                .map { Operation(it, OperationType.DELETE)}
+            ctx.clear()
+            val updatedCats = mutableSetOf<Category>()
+            ctx.performQuery(QCategory().apply {
+                joinToMatchers()
+                where(name().notEqual("unknown"))
+                and(id().`in`(categories.map { it.id }.toSet()))
+            }).list
+                .asSequence()
+                .map { ecat -> ecat.apply {
+                    categories.find { c -> c.id == ecat.id }?.let { c ->
+                        updatedCats.add(c)
+                        ecat.name = c.name
+                        ecat.matchers.apply {
+                            val uimatchers = c.matchers.toMutableList()
+                            addAll(map { orig -> orig to uimatchers.find { ui -> ui.id == orig.id }?.also { v -> uimatchers.remove(v) } }
+                                .mapNotNull { (orig, ui) -> if (ui != null) orig.apply { pattern = ui.pattern } else null }
+                                .also { clear() })
+                            addAll(uimatchers.map { ui ->
+                                ctx.newModel(ECategoryMatcher::class.java, ui.id, mustNotExistInDatabase()).apply {
+                                    category = ecat
+                                    pattern = ui.pattern
+                                }
+                            })
+                        }
+                    }
+                } ?: throw IllegalStateException("Not found category which was just loaded: $ecat")
+                }.map { Operation(it, OperationType.UPDATE) }
+                .toList().let { updateOps ->
+                    updateOps + categories.filterNot { c -> c.name == "unknown" || updatedCats.contains(c) }
+                        .map { c -> ctx.newModel(ECategory::class.java, c.id, mustNotExistInDatabase()).also { ecat ->
+                            println("ADDING NEW CATEGORY ${c.name}")
+                            ecat.name = c.name
+                            ecat.matchers.apply {
+                              addAll(c.matchers.map { cm ->
+                                  ctx.newModel(ECategoryMatcher::class.java, cm.id, mustNotExistInDatabase()).also {
+                                      it.category = ecat
+                                      it.pattern = cm.pattern
+                                  }
+                              })
+                            }
+                        } }
+                        .map { c -> Operation(c, OperationType.INSERT) }
+                }
+                .asSequence()
                 .batchesOf(100)
                 .forEach { ops ->
                     ctx.persist(ops.toPersistRequest())
                 }
-
-            ctx.clear()
-            categories.asSequence()
-                .filter { c -> c.name != "unknown" }
-                .map { c ->
-                ctx.newModel(Category::class.java, c.id, EntityConstraint.dontFetch()).also { ec ->
-                    ec.name = c.name
-                    ec.matchers.apply { clear() }.addAll(c.matchers.map { m ->
-                        ctx.getModelOrNewModel(scott.financeserver.data.model.CategoryMatcher::class.java, m.id).also { ecm ->
-                            ecm.category = ec
-                            ecm.pattern = m.pattern
-                        }
-                    })
-                }
-            }
-            .map { c ->
-                Operation(c, OperationType.INSERT)
-            }
-            .batchesOf(100)
-            .forEach { ops ->
-                ctx.persist(ops.toPersistRequest())
-            }
             ctx.commit()
         }
         catch(x : Exception) {
@@ -128,7 +167,7 @@ class CategoriesController {
 
     private val cachedRegex = mutableMapOf<String, Regex>()
     @Synchronized
-    private fun anaylseCategory(transaction: Transaction, categories : List<Category>, unknownCategory : Category)  {
+    private fun anaylseCategory(transaction: Transaction, categories : List<ECategory>, unknownCategory : ECategory)  {
         transaction.category = categories.find { c ->
             c.matchers.map { m -> cachedRegex.getOrPut(m.pattern, { Regex(m.pattern, RegexOption.IGNORE_CASE) }) }
                 .any { regex -> regex.containsMatchIn(transaction.description) }

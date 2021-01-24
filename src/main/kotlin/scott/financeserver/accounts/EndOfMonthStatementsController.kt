@@ -52,7 +52,9 @@ class EndOfMonthStatementsController {
                                 .map {
                                     balance -= it.map(Transaction::getAmount)
                                         .reduce { a, b -> a + b }
-                                    it.first().date.toEndOfLastMonth() to balance
+                                    (it.first().date.toEndOfLastMonth() to balance).also {
+                                        println("Month ${it.first}  has  stmt ${it.second}")
+                                    }
                                 }
                                 .toList().let { list ->
                                     if (list.isNotEmpty())
@@ -76,7 +78,7 @@ class EndOfMonthStatementsController {
                                 .toSequence()
                                 .sequenceOfMonthlyTransactions()
                                 .map {
-                                    it.first().date.toEndOfMonth() to (balanceAts.firstOrNull()?.let { nextBalanceAt ->
+                                    balance += (balanceAts.firstOrNull()?.let { nextBalanceAt ->
                                         var amountBeforeFixed = it.filter { t -> t.date < nextBalanceAt.time }
                                             .map(Transaction::getAmount).reduceOrNull { a, b -> a + b } ?: 0.toBigDecimal()
 
@@ -87,6 +89,9 @@ class EndOfMonthStatementsController {
                                             else -> amountBeforeFixed + amountAfterFixed
                                         }
                                     } ?: it.map(Transaction::getAmount).reduce { a, b -> a + b })
+                                    (it.first().date.toEndOfMonth() to balance).also {
+                                        println("Month ${it.first}  has  stmt ${it.second}")
+                                    }
                                 }
                                 .toList().let { list ->
                                     if (list.isNotEmpty())

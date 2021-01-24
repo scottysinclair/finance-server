@@ -11,6 +11,7 @@ import scott.barleydb.api.stream.ObjectInputStream
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
+import scott.financeserver.upload.toLocalDate
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.*
@@ -53,11 +54,32 @@ class ReportsController  {
     fun getBalanceTimeseries() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QEndOfMonthStatement().apply {
             orderBy(date(), true)
-        }).list.map { endOfMonth ->
-            TimePoint(
+        }).list.flatMap { endOfMonth ->
+            var balance = endOfMonth.amount
+            listOf(TimePoint(
                 date = toDateString(endOfMonth.date.plusOneDay()),
-                amount = endOfMonth.amount)
-        }.let {
+                amount = endOfMonth.amount).also { println("TSS $it") }) +
+              ctx.performQuery(QTransaction().apply {
+                select(id(), date(), amount())
+                where(date().greaterOrEqual(endOfMonth.date.plusOneDay()))
+                and(date().less(endOfMonth.date.plusOneDay().plusOneMonth()))
+                orderBy(date(), true)
+            }).list.also {/*
+                  println("---------------")
+                  println("${endOfMonth.date.plusOneDay()} <-> ${endOfMonth.date.plusOneDay().plusOneMonth()}")
+                  it.forEach{ println("${it.date} ${it.amount}")}
+                  println("---------------")*/
+            }.asSequence()
+                .sequenceOfLists { t -> t.date.toDay()  }
+                .map { tsInWeek ->
+//                    println("====")
+  //                  tsInWeek.forEach { t -> print("${t.date} ")}
+    //                println("====")
+                    balance += tsInWeek.map{ it.amount }.reduceOrNull{a, b -> a + b} ?: 0.toBigDecimal()
+                    TimePoint(date = toDateString(tsInWeek.last().date), amount = balance).also { println("TS $it") }
+                }
+        }
+        .let {
             TimeSeriesReport(listOf(TimeSeries("balance", it)))
         }
     }.also { Runtime.getRuntime().gc() }
@@ -130,31 +152,10 @@ fun <T> ObjectInputStream<T>.toSequence() : Sequence<T> = generateSequence {
         }
     }
 
-fun <E,T> Sequence<T>.sequenceOfLists(extract : (T) -> E) : Sequence<List<T>> {
-    var currentExtract : E? = null
-    var list = mutableListOf<T>()
-    val i = iterator()
-    return generateSequence {
-        while(i.hasNext() && i.next().let { t ->
-                list.add(t)
-                extract(t) == currentExtract
-            });
-        if (i.hasNext()) {
-            list.subList(0, list.size-1).let {
-                it.toList().also { _ ->
-                    it.clear()
-                    currentExtract = extract(list.first())
-                }
-            }
-        }
-        else if (list.isNotEmpty()) list.toList().also { list.clear() } else null
-    }
-    .filter { it.isNotEmpty() }
-    .map { it.also { println("Month with ${it.size} transactions ")} }
-}
+
 
 fun Sequence<ETransaction>.sequenceOfMonthlyTransactions() = sequenceOfLists { t -> t.date.toMonth()  }
-    .map { it.also { println("Month with ${it.size} transactions ")} }
+    .map { it.also { println("Month ${it.get(0).date.toMonth()} with ${it.size} transactions ")} }
 
 
 fun Sequence<List<ETransaction>>.sequenceOfSummedCategories() : Sequence<Pair<Date, Map<String,BigDecimal>>> {
@@ -187,22 +188,6 @@ fun Sequence<EEndOfMonthStatement>.toSequenceOfYears() : Sequence<Int> {
         .distinct()
 }
 
-/*
-fun <T> Sequence<T>.deduplicate() : Sequence<T> {
-    return iterator().let { i ->
-            var lastEmitted : T? = null
-            generateSequence {
-                i.next{ v -> v != lastEmitted }.also {
-                    lastEmitted = it
-                }
-            }
-        }
-}*/
-
-fun Date.toYear() = GregorianCalendar().let {
-    it.time = this
-    it.get(Calendar.YEAR)
-}
 
 fun <T> Iterator<T>.next(predicate : (T) -> Boolean) : T? {
     while (hasNext()) {
@@ -212,24 +197,7 @@ fun <T> Iterator<T>.next(predicate : (T) -> Boolean) : T? {
     return null
 }
 
-fun Date.plusOneMonth() = GregorianCalendar().let {
-    it.time = this
-    it.add(Calendar.MONTH, 1)
-    it.time
-}
 
-fun Date.plusOneDay() = GregorianCalendar().let {
-    it.time = this
-    it.add(Calendar.DAY_OF_MONTH, 1)
-    it.time
-}
-
-fun Date.toMonth()  = GregorianCalendar().let {
-    it.time = this
-    it.get(Calendar.MONTH)
-}
-
-
-private fun toDateString(date: Date) = SimpleDateFormat("YYYY-MM-dd").format(date)
+private fun toDateString(date: Date) = SimpleDateFormat("yyyy-MM-dd").format(date)
 
 
