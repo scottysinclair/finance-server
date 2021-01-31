@@ -8,10 +8,7 @@ import scott.barleydb.api.core.Environment
 import scott.barleydb.api.core.entity.EntityConstraint
 import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
-import scott.financeserver.data.query.QAccount
-import scott.financeserver.data.query.QCategory
-import scott.financeserver.data.query.QEndOfMonthStatement
-import scott.financeserver.data.query.QTransaction
+import scott.financeserver.data.query.*
 import java.math.BigDecimal
 import java.time.*
 import java.util.*
@@ -24,7 +21,7 @@ data class CategoriesResponse(val categories : List<Category>)
 data class Category(val id : UUID, val name : String)
 
 data class TransactionsResponse(val transactions: List<Transaction>)
-data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val category : String, val amount : BigDecimal)
+data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val feed : UUID, val category : String, val amount : BigDecimal)
 
 data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
 
@@ -64,19 +61,22 @@ class DataEntryController {
     @PostMapping("/transaction", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun saveTransactions(@RequestBody transaction: Transaction) : Transaction {
         DataEntityContext(env).use { ctx ->
-            val acc = ctx.newModel(EAccount::class.java, lookupAccount(transaction.account).id, EntityConstraint.mustExistInDatabase())
-            val cat = ctx.newModel(ECategory::class.java, lookupCategory(transaction.category).id, EntityConstraint.mustExistInDatabase())
-            return ctx.newModel(ETransaction::class.java, transaction.id, EntityConstraint.dontFetch()).apply {
-                account = acc
-                date = toDate(transaction.day, transaction.month, transaction.year)
-                category = cat
-                amount = transaction.amount
+            ctx.performQuery(QCategory().apply { where(name().equal(transaction.category)) }).singleResult.let { cat ->
+                    return ctx.performQuery(QTransaction().apply { where(id().equal(transaction.id)) }).singleResult.apply {
+                        if (cat.name.equals("unknown")) {
+                            this.userCategorized = false
+                        }
+                        else if (this.category.id != cat.id) {
+                            this.userCategorized = true
+                        }
+                        this.category = cat
+                    }
+                        .also {
+                            ctx.persist(PersistRequest().save(it))
+                            println("SAVED TRANSACTION $transaction")
+                        }.forClient()
+                }
             }
-            .also {
-                ctx.persist(PersistRequest().save(it))
-                println("SAVED TRANSACTION $transaction")
-            }.forClient()
-        }
     }
 
 
@@ -148,11 +148,12 @@ class DataEntryController {
  */
 }
 
-fun toDate(day : Int, month : Int, year : Int) = LocalDate.of(year, month, day).atStartOfDay().toDate()
+fun toDate(day : Int, month : Int, year : Int) = LocalDate.of(year, month + 1, day).atStartOfDay().toDate()
 
 fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c ->
         Transaction(
             id = id,
+            feed = feed.id,
             account = account.name,
             description = description,
             day = c.get(Calendar.DAY_OF_MONTH),
