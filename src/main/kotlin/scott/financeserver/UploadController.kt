@@ -162,7 +162,7 @@ class UploadController {
                 .filter { (oldCat, t) ->  oldCat.id != t.category.id }
                 .map { (_, t) -> t}
                 .map { t -> Operation(t, OperationType.UPDATE) }
-                .batchesOf(100)
+                .chunked(100)
                 .forEach { ops ->
                     ctx.persist(ops.toPersistRequest())
                 }

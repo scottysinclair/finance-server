@@ -6,11 +6,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import scott.barleydb.api.core.Environment
-import scott.barleydb.api.core.entity.EntityConstraint
 import scott.barleydb.api.core.entity.EntityConstraint.mustNotExistInDatabase
 import scott.barleydb.api.persist.Operation
 import scott.barleydb.api.persist.OperationType
-import scott.financeserver.batchesOf
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.model.Transaction
 import scott.financeserver.data.model.Category as ECategory
@@ -65,7 +63,7 @@ class CategoriesController {
                         })
                             .toSequence()
                             .map { Operation(it.also { it.category = unknown }, OperationType.UPDATE) }
-                            .batchesOf(100)
+                            .chunked(100)
                             .forEach { ops ->
                                 ctx.persist(ops.toPersistRequest())
                             }
@@ -123,7 +121,7 @@ class CategoriesController {
                         .map { c -> Operation(c, OperationType.INSERT) }
                 }
                 .asSequence()
-                .batchesOf(100)
+                .chunked(100)
                 .forEach { ops ->
                     ctx.persist(ops.toPersistRequest())
                 }
@@ -153,7 +151,7 @@ class CategoriesController {
                 .filter { (oldCat, t) ->  oldCat.id != t.category.id }
                 .map { (_, t) -> t}
                 .map { t -> Operation(t, OperationType.UPDATE) }
-                .batchesOf(100)
+                .chunked(100)
                 .forEach { ops ->
                     ctx.persist(ops.toPersistRequest())
                 }

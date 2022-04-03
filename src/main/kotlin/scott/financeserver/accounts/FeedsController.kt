@@ -245,7 +245,8 @@ class FeedsController {
             ctx.autocommit = false
             ctx.performQuery(QFeed().apply { where(id().equal(feedId)) }).singleResult.let { feed ->
                 duplicates.values
-                    .flatMap { dups ->
+                    .flatMap { it }
+                    .let { dups ->
                         ctx.performQuery(QDuplicates().apply {
                             dups.forEach { d -> or(id().equal(d.id)) }
                         }).list.let { existingDups ->
@@ -253,8 +254,9 @@ class FeedsController {
                                 existingDups.find { d.id == it.id }?.let { existingD ->
                                     Operation(existingD, when (d.duplicate) {
                                         null -> OperationType.DELETE
-                                        else -> OperationType.UPDATE
-
+                                        else -> OperationType.UPDATE.also {
+                                            existingD.duplicate = d.duplicate
+                                        }
                                     })
                                 } ?: Operation(ctx.newModel(Duplicates::class.java, d.id).apply {
                                     feedHash = feed.contentHash
