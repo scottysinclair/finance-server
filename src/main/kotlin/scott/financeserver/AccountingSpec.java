@@ -26,7 +26,7 @@ public class AccountingSpec extends StaticDefinitions {
     /**
      * generate the query and model classes for the spec.
      */
-    public static void main(String args[]) {
+    public static void mains(String args[]) {
         GenerateModels.execute(AccountingSpec.class);
     }
 

@@ -23,7 +23,7 @@ class FixedBalancesController {
     @Autowired
     private lateinit var env: Environment
 
-    @GetMapping("/account/{accountName}/fixedbalance")
+    @GetMapping("/api/account/{accountName}/fixedbalance")
     fun getFixedBalances(@PathVariable accountName : String) = DataEntityContext(env).use { ctx ->
           ctx.performQuery(QBalanceAt().apply {
               whereExists(existsAccount().apply { where(name().equal(accountName)) })
@@ -36,7 +36,7 @@ class FixedBalancesController {
           }.let { FixedBalanceResponse(it) }.also { Runtime.getRuntime().gc() }
     }
 
-    @PostMapping("/account/{accountName}/fixedbalance")
+    @PostMapping("/api/account/{accountName}/fixedbalance")
     fun saveFixedBalances(@PathVariable accountName : String, @RequestBody fixedBalance : FixedBalancePost) = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QAccount().apply {
             where(name().equal(accountName))

@@ -5,7 +5,6 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import scott.barleydb.api.core.Environment
-import scott.barleydb.api.core.entity.EntityConstraint
 import scott.barleydb.api.persist.PersistRequest
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.*
@@ -20,7 +19,7 @@ import scott.financeserver.data.model.Transaction as ETransaction
 data class CategoriesResponse(val categories : List<Category>)
 data class Category(val id : UUID, val name : String)
 
-data class TransactionsResponse(val transactions: List<Transaction>)
+data class  TransactionsResponse(val transactions: List<Transaction>)
 data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val feed : UUID, val category : String, val amount : BigDecimal)
 
 data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
@@ -47,7 +46,7 @@ class DataEntryController {
     }
 
 
-    @GetMapping("/categories")
+    @GetMapping("/api/categories")
     fun getCategories() = DataEntityContext(env).use {ctx ->
             ctx.performQuery(QCategory()).list.map {
             Category(
@@ -58,7 +57,7 @@ class DataEntryController {
         .let(::CategoriesResponse)
     }
 
-    @PostMapping("/transaction", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping("/api/transaction", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun saveTransactions(@RequestBody transaction: Transaction) : Transaction {
         DataEntityContext(env).use { ctx ->
             ctx.performQuery(QCategory().apply { where(name().equal(transaction.category)) }).singleResult.let { cat ->
@@ -69,6 +68,7 @@ class DataEntryController {
                         else if (this.category.id != cat.id) {
                             this.userCategorized = true
                         }
+                        this.description = transaction.description
                         this.category = cat
                     }
                         .also {
@@ -80,8 +80,25 @@ class DataEntryController {
     }
 
 
-    @GetMapping("/transaction/{year}/{month}")
-    fun getTransactions(@PathVariable year : Int, @PathVariable month : Int) : TransactionsResponse {
+    @GetMapping("/api/transaction/{year}")
+    fun getTransactionsForYear(@PathVariable year : Int) : TransactionsResponse {
+        val from = YearMonth.of(year, 1).atDay(1).atStartOfDay().toDate()
+        val to = YearMonth.of(year, 12).atEndOfMonth().atTime(LocalTime.MAX).toDate()
+
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QTransaction().apply {
+                joinToCategory()
+                joinToAccount()
+                where(duplicate().equal(false).and(date().greaterOrEqual(from).and(date().lessOrEqual(to))))
+                orderBy(date(), true)
+            })
+                .list.map { it.forClient() }
+                .let(::TransactionsResponse)
+        }
+    }
+
+    @GetMapping("/api/transaction/{year}/{month}")
+    fun getTransactionsForMonth(@PathVariable year : Int, @PathVariable month : Int) : TransactionsResponse {
         val from = YearMonth.of(year, month).atDay(1).atStartOfDay().toDate()
         val to = YearMonth.of(year, month).atEndOfMonth().atTime(LocalTime.MAX).toDate()
 
@@ -97,7 +114,7 @@ class DataEntryController {
         }
     }
 
-    @GetMapping("/month/{year}/{month}")
+    @GetMapping("/api/month/{year}/{month}")
     fun getMonth(@PathVariable year : Int, @PathVariable month : Int) : ResponseEntity<MonthResponse> {
         val from = toEndOfLastMonth(year, month)
         return DataEntityContext(env).use { ctx ->
@@ -115,7 +132,7 @@ class DataEntryController {
         }
     }
 /*
-    @PostMapping("/month/{year}/{month}")
+    @PostMapping("/api/month/{year}/{month}")
     fun postMonth(@PathVariable year : Int, @PathVariable month : Int, @RequestBody monthData : MonthData) {
         DataEntityContext(env).let { ctx ->
             ctx.autocommit = false

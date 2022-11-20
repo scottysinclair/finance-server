@@ -31,7 +31,7 @@ fun main() {
 */
 fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) -> R) : R {
     var headers : List<String>? = null
-    return CSVParser(bytes.inputStream().reader(Charsets.ISO_8859_1), CSVFormat.newFormat(';'))
+    return CSVParser(bytes.inputStream().reader(Charsets.UTF_8), CSVFormat.newFormat(';'))
         .iterator().asSequence().filter { r ->
             if (headers == null) {
                 headers = r.toList().map { it.trim() }.also {

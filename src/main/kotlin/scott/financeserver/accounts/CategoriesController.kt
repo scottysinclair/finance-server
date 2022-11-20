@@ -27,7 +27,7 @@ class CategoriesController {
     @Autowired
     private lateinit var env: Environment
 
-    @GetMapping("/category")
+    @GetMapping("/api/category")
     fun getCategories() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QCategory().apply {
             joinToMatchers()
@@ -47,7 +47,7 @@ class CategoriesController {
             .let { CategoryResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
-    @PostMapping("/category")
+    @PostMapping("/api/category")
     fun saveCategories(@RequestBody categories : List<Category>) = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         try {
@@ -134,7 +134,7 @@ class CategoriesController {
     }.also { Runtime.getRuntime().gc() }
         .also { applyCategories() }
 
-    @PostMapping("/category/apply")
+    @PostMapping("/api/category/apply")
     fun applyCategories() : Unit = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         val categories = ctx.performQuery(QCategory().apply {
@@ -173,7 +173,7 @@ class CategoriesController {
     }
 
 /*
-    @PostMapping("/category/apply")
+    @PostMapping("/api/category/apply")
     fun applyCategories() : Unit = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         val categories = ctx.performQuery(QCategory().apply {

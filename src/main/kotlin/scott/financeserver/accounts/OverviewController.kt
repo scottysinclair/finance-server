@@ -19,7 +19,7 @@ class OverviewController {
     @Autowired
     private lateinit var env: Environment
 
-    @GetMapping("/account/{accountName}/overview")
+    @GetMapping("/api/account/{accountName}/overview")
     fun getOverview(@PathVariable accountName : String) = DataEntityContext(env).use { ctx ->
         AcountOverview(
             fromDate = 0L,

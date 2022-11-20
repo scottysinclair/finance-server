@@ -37,7 +37,7 @@ class AccountsController {
     }
 
 
-    @GetMapping("/account")
+    @GetMapping("/api/account")
     fun getAccounts() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QAccount().apply {
             orderBy(name(), true)

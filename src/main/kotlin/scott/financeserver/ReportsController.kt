@@ -38,7 +38,7 @@ class ReportsController  {
     @Autowired
     private lateinit var env: Environment
 
-    @GetMapping("/years")
+    @GetMapping("/api/years")
     fun getYears()  = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QEndOfMonthStatement().apply {
             orderBy(date(), true)
@@ -50,7 +50,7 @@ class ReportsController  {
             }
     }.also { Runtime.getRuntime().gc() }
 
-    @GetMapping("/timeseries/balance")
+    @GetMapping("/api/timeseries/balance")
     fun getBalanceTimeseries() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QEndOfMonthStatement().apply {
             orderBy(date(), true)
@@ -85,7 +85,7 @@ class ReportsController  {
     }.also { Runtime.getRuntime().gc() }
 
 
-    @GetMapping("/timeseries/categories")
+    @GetMapping("/api/timeseries/categories")
     fun getCategoriesTimeseries(@RequestParam description :String?) : TimeSeriesReport = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             select(id(), categoryId(), amount())
@@ -105,7 +105,7 @@ class ReportsController  {
             }
         }.also { Runtime.getRuntime().gc() }
 
-    @GetMapping("/year/{year}/categories")
+    @GetMapping("/api/year/{year}/categories")
     fun getCategoryTotalsForYear(@PathVariable year :Int) = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             joinToCategory()

@@ -38,7 +38,7 @@ class FeedsController {
     @Autowired
     private lateinit var env: Environment
 
-    @GetMapping("/account/{accountName}/feed")
+    @GetMapping("/api/account/{accountName}/feed")
     fun getOverview(@PathVariable accountName: String) = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             val feedJoin = joinToFeed()
@@ -144,7 +144,7 @@ class FeedsController {
         }
     }
 
-    @DeleteMapping("/feed/{feedId}")
+    @DeleteMapping("/api/feed/{feedId}")
     fun deleteFeed(@PathVariable feedId: UUID) = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         val feed = ctx.performQuery(QFeed().apply { where(id().equal(feedId)) }).singleResult
@@ -190,7 +190,7 @@ class FeedsController {
         }
     }.also { Runtime.getRuntime().gc() }
 
-    @GetMapping("/duplicateCheck/{feedId}")
+    @GetMapping("/api/duplicateCheck/{feedId}")
     fun duplicateCheck(@PathVariable feedId : UUID) : DuplicateCheckResult {
         return DataEntityContext(env).use { ctx ->
             ctx.performQuery(QFeed().apply {

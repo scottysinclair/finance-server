@@ -81,7 +81,7 @@ class UploadController {
     }
 
 
-    @GetMapping("/statement")
+    @GetMapping("/api/statement")
     fun getStatements() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QEndOfMonthStatement().apply {
             orderBy(date(), true)
@@ -95,7 +95,7 @@ class UploadController {
             .let { StatementResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
-    @GetMapping("/category")
+    @GetMapping("/api/category")
     fun getCategories() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QCategory().apply {
             joinToMatchers()
@@ -111,7 +111,7 @@ class UploadController {
             .let { CategoryResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
-    @PostMapping("/category")
+    @PostMapping("/api/category")
     fun saveCategories(@RequestBody categories : List<Category>) = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         try {
@@ -145,7 +145,7 @@ class UploadController {
     }.also { Runtime.getRuntime().gc() }
    .also { applyCategories() }
 
-    @PostMapping("/category/apply")
+    @PostMapping("/api/category/apply")
     fun applyCategories() : Unit = DataEntityContext(env).use { ctx ->
         ctx.autocommit = false
         val categories = ctx.performQuery(QCategory().apply {
@@ -184,7 +184,7 @@ class UploadController {
     }
 
 
-    @GetMapping("/balanceat/{accountName}")
+    @GetMapping("/api/balanceat/{accountName}")
     fun getBalanceAts(@PathVariable accountName : String) = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QAccount().apply {
             where(name().equal(accountName))
@@ -203,7 +203,7 @@ class UploadController {
         }
     }.also { Runtime.getRuntime().gc() }
 
-    @PostMapping("/balanceAt/{id}")
+    @PostMapping("/api/balanceAt/{id}")
     fun addBalanceAt(@PathVariable id : UUID, @RequestBody data : PutBalanceAt) = DataEntityContext(env).use { ctx ->
         ctx.persist(PersistRequest().save(ctx.newModel(EBalanceAt::class.java, id).apply {
             account = ctx.newModel(EAccount::class.java, data.account, mustExistInDatabase())
@@ -213,7 +213,7 @@ class UploadController {
     }.also { Runtime.getRuntime().gc() }
 
 
-        @GetMapping("/feed")
+        @GetMapping("/api/feed")
     fun getFeeds() = DataEntityContext(env).use { ctx ->
         ctx.performQuery(QFeed().apply {
             orderBy(dateImported(), true)
@@ -226,14 +226,14 @@ class UploadController {
             .let { FeedResponse(it) }
     }.also { Runtime.getRuntime().gc() }
 
-    @PutMapping("/account/{accountName}")
+    @PutMapping("/api/account/{accountName}")
     fun addAccount(@PathVariable accountName : String) = DataEntityContext(env).use { ctx ->
         ctx.persist(PersistRequest().insert(ctx.newModel(EAccount::class.java).apply {
             name = accountName
         }))
     }.also { Runtime.getRuntime().gc() }
 
-    @DeleteMapping("/account/{accountId}")
+    @DeleteMapping("/api/account/{accountId}")
     fun deleteAccount(@PathVariable accountId : UUID) = DataEntityContext(env).use { ctx ->
         if (ctx.performQuery(QTransaction().apply {
             select(id())
