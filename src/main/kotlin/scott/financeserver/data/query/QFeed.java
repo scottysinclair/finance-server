@@ -12,7 +12,7 @@ import scott.financeserver.data.model.FeedState;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QFeed extends QueryObject<Feed> {
   private static final long serialVersionUID = 1L;

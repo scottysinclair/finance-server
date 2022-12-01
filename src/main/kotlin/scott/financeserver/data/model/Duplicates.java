@@ -8,7 +8,7 @@ import java.util.UUID;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class Duplicates extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;

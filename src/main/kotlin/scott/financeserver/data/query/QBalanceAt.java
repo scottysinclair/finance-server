@@ -12,7 +12,7 @@ import java.util.Date;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QBalanceAt extends QueryObject<BalanceAt> {
   private static final long serialVersionUID = 1L;

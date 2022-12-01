@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import scott.barleydb.api.core.Environment
 import scott.barleydb.api.persist.PersistRequest
+import scott.financeserver.accounts.Transaction
+import scott.financeserver.accounts.TransactionsResponse
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.*
 import java.math.BigDecimal
@@ -18,9 +20,6 @@ import scott.financeserver.data.model.Transaction as ETransaction
 
 data class CategoriesResponse(val categories : List<Category>)
 data class Category(val id : UUID, val name : String)
-
-data class  TransactionsResponse(val transactions: List<Transaction>)
-data class Transaction(val id : UUID, val account : String, val description : String, val day : Int, val month : Int, val year: Int, val feed : UUID, val category : String, val amount : BigDecimal)
 
 data class MonthResponse(val id : UUID, val date : Long, val startingBalance : BigDecimal)
 
@@ -178,5 +177,6 @@ fun ETransaction.forClient() = GregorianCalendar().apply { time = date }.let { c
             year = c.get(Calendar.YEAR),
             category = category.name,
             amount = amount,
+            duplicate = duplicate
         )
     }

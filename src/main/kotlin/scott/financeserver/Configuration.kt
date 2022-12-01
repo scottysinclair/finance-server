@@ -20,7 +20,7 @@ class Configuration {
                 .withPassword("")
                 .end()
             .withDroppingSchema(false)
-            .withSchemaCreation(create)
+            .withSchemaCreation(false)
             .withSequenceGenerator(QuickHackSequenceGenerator::class.java)
             .create()
 

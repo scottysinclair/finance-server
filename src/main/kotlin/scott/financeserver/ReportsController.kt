@@ -6,19 +6,15 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import scott.barleydb.api.core.Environment
-import scott.barleydb.api.core.entity.EntityContext
 import scott.barleydb.api.stream.ObjectInputStream
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.query.QEndOfMonthStatement
 import scott.financeserver.data.query.QTransaction
-import scott.financeserver.upload.toLocalDate
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.*
-
 import scott.financeserver.data.model.EndOfMonthStatement as EEndOfMonthStatement
 import scott.financeserver.data.model.Transaction as ETransaction
-
 
 
 data class TimeSeriesReport(val data : List<TimeSeries>)

@@ -8,17 +8,16 @@ import scott.barleydb.api.core.entity.EntityConstraint
 import scott.barleydb.api.persist.Operation
 import scott.barleydb.api.persist.OperationType
 import scott.barleydb.api.persist.PersistRequest
+import scott.financeserver.*
 import scott.financeserver.data.DataEntityContext
-import scott.financeserver.data.model.*
-import scott.financeserver.data.model.Category
-import scott.financeserver.data.model.Feed
+import scott.financeserver.data.model.FeedState
+import scott.financeserver.data.model.Category   as ECategory
+import scott.financeserver.data.model.Feed  as EFeed
+import scott.financeserver.data.model.Transaction as ETransaction
+import scott.financeserver.data.model.Duplicates as EDuplicates
 import scott.financeserver.data.query.*
 import scott.financeserver.import.parseBankAustria
-import scott.financeserver.sequenceOfLists
 import scott.financeserver.toDate
-import scott.financeserver.toSequence
-import scott.financeserver.toYearMonth
-import scott.financeserver.upload.*
 import java.math.BigDecimal
 import java.util.*
 
@@ -39,7 +38,7 @@ class FeedsController {
     private lateinit var env: Environment
 
     @GetMapping("/api/account/{accountName}/feed")
-    fun getOverview(@PathVariable accountName: String) = DataEntityContext(env).use { ctx ->
+    fun getOverview(@PathVariable accountName: String) : FeedOverviewResponse = DataEntityContext(env).use { ctx ->
         ctx.streamObjectQuery(QTransaction().apply {
             val feedJoin = joinToFeed()
             select(id(), feedId(), date(), feedJoin.file(), feedJoin.dateImported())
@@ -69,7 +68,7 @@ class FeedsController {
             }.let { FeedOverviewResponse(it) }.also { Runtime.getRuntime().gc() }
     }
 
-    @PostMapping("account/{accountName}/feed")
+    @PostMapping("/api/account/{accountName}/feed")
     fun uploadTransactions(
         @PathVariable accountName: String,
         @RequestParam("file") file: MultipartFile,
@@ -81,7 +80,7 @@ class FeedsController {
 
             runCatching {
                 val account = ctx.performQuery(QAccount().apply { name().equal(accountName) }).singleResult
-                val feed = ctx.newModel(Feed::class.java).also {
+                val feed = ctx.newModel(EFeed::class.java).also {
                     it.contentHash = toHash(file.bytes)
                     it.account = account
                     it.dateImported = Date()
@@ -96,7 +95,7 @@ class FeedsController {
                 val matchingHashes = ctx.performQuery(QTransaction().apply {
                     select(id(), contentHash())
                     where(contentHash().`in`(hashes))
-                }).list.map(Transaction::getContentHash).toSet()
+                }).list.map(ETransaction::getContentHash).toSet()
                 println("Found ${matchingHashes.size} matches")
 
                 parseBankAustria(file.bytes) { seq ->
@@ -107,7 +106,7 @@ class FeedsController {
                     }.filter { (_, hash, _) -> matchingHashes.contains(hash).not() } //ignore if the content hash is already in the DB
                         .toList()
                         .map { (content, hash, row) ->
-                            ctx.persist(PersistRequest().insert(ctx.newModel(Transaction::class.java).also { t ->
+                            ctx.persist(PersistRequest().insert(ctx.newModel(ETransaction::class.java).also { t ->
                                 t.account = account
                                 t.feed = feed
                                 t.feedRecordNumber = row.lineNumber
@@ -258,7 +257,7 @@ class FeedsController {
                                             existingD.duplicate = d.duplicate
                                         }
                                     })
-                                } ?: Operation(ctx.newModel(Duplicates::class.java, d.id).apply {
+                                } ?: Operation(ctx.newModel(EDuplicates::class.java, d.id).apply {
                                     feedHash = feed.contentHash
                                     feedRecordNumber = d.recordNumber
                                     content = d.content
@@ -310,8 +309,24 @@ class FeedsController {
         } }
     }
 
+    @GetMapping("/api/feed/{feedId}")
+    fun getFeedTransactions(@PathVariable feedId: UUID) : TransactionsResponse {
+        return DataEntityContext(env).use { ctx ->
+            ctx.performQuery(QTransaction().apply {
+                where(feedId().equal(feedId))
+                orderBy(date(), true)
+                orderBy(amount(), true)
+            }).list.map {
+                it.forClient()
+            }.let {
+                TransactionsResponse(it)
+            }
+        }
+    }
+
 }
 
-fun unknownCategory(categories : List<Category>): Category {
+
+fun unknownCategory(categories : List<ECategory>): ECategory {
     return categories.filter { it.name == "unknown" }.first()
 }

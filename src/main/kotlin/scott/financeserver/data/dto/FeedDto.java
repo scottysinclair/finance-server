@@ -5,12 +5,13 @@ import scott.barleydb.api.dto.BaseDto;
 import java.util.UUID;
 import java.util.Date;
 
+import scott.financeserver.data.dto.AccountDto;
 import scott.financeserver.data.model.FeedState;
 
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class FeedDto extends BaseDto {
   private static final long serialVersionUID = 1L;
@@ -18,7 +19,7 @@ public class FeedDto extends BaseDto {
   private UUID id;
   private String contentHash;
   private Date dateImported;
-  private AccountDto account;
+  private scott.financeserver.data.dto.AccountDto account;
   private String file;
   private FeedState state;
 
@@ -49,7 +50,7 @@ public class FeedDto extends BaseDto {
     this.dateImported = dateImported;
   }
 
-  public AccountDto getAccount() {
+  public scott.financeserver.data.dto.AccountDto getAccount() {
     return account;
   }
 

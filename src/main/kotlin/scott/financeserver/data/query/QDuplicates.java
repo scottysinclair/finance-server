@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QDuplicates extends QueryObject<Duplicates> {
   private static final long serialVersionUID = 1L;

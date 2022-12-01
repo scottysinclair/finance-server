@@ -10,8 +10,6 @@ import scott.financeserver.data.model.Category
 import scott.financeserver.data.query.QAccount
 import scott.financeserver.data.query.QCategory
 import scott.financeserver.data.query.QTransaction
-import scott.financeserver.upload.Account
-import scott.financeserver.upload.AccountResponse
 import javax.annotation.PostConstruct
 
 @RestController

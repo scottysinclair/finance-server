@@ -2,7 +2,6 @@ package scott.financeserver.import
 
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
-import java.io.File
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.*

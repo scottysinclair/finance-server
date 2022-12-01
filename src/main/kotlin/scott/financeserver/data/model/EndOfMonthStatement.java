@@ -5,6 +5,8 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
+import scott.financeserver.data.model.Account;
+
 import java.util.UUID;
 import java.util.Date;
 import java.math.BigDecimal;
@@ -12,7 +14,7 @@ import java.math.BigDecimal;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class EndOfMonthStatement extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
@@ -34,7 +36,7 @@ public class EndOfMonthStatement extends AbstractCustomEntityProxy {
     return id.getValue();
   }
 
-  public Account getAccount() {
+  public scott.financeserver.data.model.Account getAccount() {
     return super.getFromRefNode(account.refNode);
   }
 

@@ -5,6 +5,10 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
+import scott.financeserver.data.model.Account;
+import scott.financeserver.data.model.Category;
+import scott.financeserver.data.model.Feed;
+
 import java.util.UUID;
 import java.util.Date;
 import java.math.BigDecimal;
@@ -12,7 +16,7 @@ import java.math.BigDecimal;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class Transaction extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
@@ -50,7 +54,7 @@ public class Transaction extends AbstractCustomEntityProxy {
     return id.getValue();
   }
 
-  public Account getAccount() {
+  public scott.financeserver.data.model.Account getAccount() {
     return super.getFromRefNode(account.refNode);
   }
 
@@ -58,7 +62,7 @@ public class Transaction extends AbstractCustomEntityProxy {
     setToRefNode(this.account.refNode, account);
   }
 
-  public Feed getFeed() {
+  public scott.financeserver.data.model.Feed getFeed() {
     return super.getFromRefNode(feed.refNode);
   }
 
@@ -106,7 +110,7 @@ public class Transaction extends AbstractCustomEntityProxy {
     this.date.setValue(date);
   }
 
-  public Category getCategory() {
+  public scott.financeserver.data.model.Category getCategory() {
     return super.getFromRefNode(category.refNode);
   }
 

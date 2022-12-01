@@ -18,7 +18,6 @@ import scott.financeserver.sequenceOfMonthlyTransactions
 import scott.financeserver.toEndOfLastMonth
 import scott.financeserver.toEndOfMonth
 import scott.financeserver.toSequence
-import scott.financeserver.upload.toPersistRequest
 import java.util.*
 
 @RestController

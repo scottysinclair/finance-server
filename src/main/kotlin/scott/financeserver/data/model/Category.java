@@ -11,12 +11,14 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.ToManyNode;
 import scott.barleydb.api.core.proxy.ToManyNodeProxyHelper;
+import scott.financeserver.data.model.CategoryMatcher;
+
 import java.util.UUID;
 
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class Category extends AbstractCustomEntityProxy {
   private static final long serialVersionUID = 1L;
@@ -44,10 +46,10 @@ public class Category extends AbstractCustomEntityProxy {
     this.name.setValue(name);
   }
 
-  public List<CategoryMatcher> getMatchers() {
+  public List<scott.financeserver.data.model.CategoryMatcher> getMatchers() {
     return super.getListProxy(matchers.toManyNode);
   }
-  public ObjectInputStream<CategoryMatcher> streamMatchers() throws BarleyDBRuntimeException {
+  public ObjectInputStream<scott.financeserver.data.model.CategoryMatcher> streamMatchers() throws BarleyDBRuntimeException {
     try {final QueryEntityInputStream in = matchers.toManyNode.stream();
          return new ObjectInputStream<>(in);
     }catch(Exception x) {
@@ -57,7 +59,7 @@ public class Category extends AbstractCustomEntityProxy {
     }
   }
 
-  public ObjectInputStream<CategoryMatcher> streamMatchers(QueryObject<CategoryMatcher> query) throws BarleyDBRuntimeException  {
+  public ObjectInputStream<scott.financeserver.data.model.CategoryMatcher> streamMatchers(QueryObject<CategoryMatcher> query) throws BarleyDBRuntimeException  {
     try { final QueryEntityInputStream in = matchers.toManyNode.stream(query);
          return new ObjectInputStream<>(in);
     }catch(Exception x) {

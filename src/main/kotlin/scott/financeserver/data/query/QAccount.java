@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QAccount extends QueryObject<Account> {
   private static final long serialVersionUID = 1L;

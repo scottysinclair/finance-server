@@ -11,15 +11,11 @@ import scott.barleydb.api.persist.Operation
 import scott.barleydb.api.persist.OperationType
 import scott.financeserver.data.DataEntityContext
 import scott.financeserver.data.model.Transaction
-import scott.financeserver.data.model.Category as ECategory
-import scott.financeserver.data.model.CategoryMatcher as ECategoryMatcher
 import scott.financeserver.data.query.QCategory
 import scott.financeserver.data.query.QTransaction
 import scott.financeserver.toSequence
-import scott.financeserver.upload.Category
-import scott.financeserver.upload.CategoryMatcher
-import scott.financeserver.upload.CategoryResponse
-import scott.financeserver.upload.toPersistRequest
+import scott.financeserver.data.model.Category as ECategory
+import scott.financeserver.data.model.CategoryMatcher as ECategoryMatcher
 
 @RestController
 class CategoriesController {
@@ -33,7 +29,7 @@ class CategoriesController {
             joinToMatchers()
             orderBy(name(), true)
         }).list.map {
-            scott.financeserver.upload.Category(
+            Category(
                 id = it.id,
                 name = it.name,
                 matchers = it.matchers.map { m ->

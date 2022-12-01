@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QEndOfMonthStatement extends QueryObject<EndOfMonthStatement> {
   private static final long serialVersionUID = 1L;

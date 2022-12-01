@@ -10,7 +10,7 @@ import scott.financeserver.data.query.QCategoryMatcher;
 /**
  * Generated from Entity Specification
  *
- * @author exssinclair
+ * @author scott
  */
 public class QCategory extends QueryObject<Category> {
   private static final long serialVersionUID = 1L;
