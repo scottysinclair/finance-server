@@ -1,9 +1,6 @@
 package scott.financeserver.data.dto;
 
 import scott.barleydb.api.dto.BaseDto;
-import scott.financeserver.data.dto.AccountDto;
-import scott.financeserver.data.dto.CategoryDto;
-import scott.financeserver.data.dto.FeedDto;
 
 import java.util.UUID;
 import java.util.Date;
@@ -18,14 +15,14 @@ public class TransactionDto extends BaseDto {
   private static final long serialVersionUID = 1L;
 
   private UUID id;
-  private scott.financeserver.data.dto.AccountDto account;
-  private scott.financeserver.data.dto.FeedDto feed;
+  private AccountDto account;
+  private FeedDto feed;
   private Integer feedRecordNumber;
   private String content;
   private String contentHash;
   private String description;
   private Date date;
-  private scott.financeserver.data.dto.CategoryDto category;
+  private CategoryDto category;
   private Boolean userCategorized;
   private BigDecimal amount;
   private Boolean duplicate;
@@ -41,7 +38,7 @@ public class TransactionDto extends BaseDto {
     this.id = id;
   }
 
-  public scott.financeserver.data.dto.AccountDto getAccount() {
+  public AccountDto getAccount() {
     return account;
   }
 
@@ -49,7 +46,7 @@ public class TransactionDto extends BaseDto {
     this.account = account;
   }
 
-  public scott.financeserver.data.dto.FeedDto getFeed() {
+  public FeedDto getFeed() {
     return feed;
   }
 
@@ -97,7 +94,7 @@ public class TransactionDto extends BaseDto {
     this.date = date;
   }
 
-  public scott.financeserver.data.dto.CategoryDto getCategory() {
+  public CategoryDto getCategory() {
     return category;
   }
 

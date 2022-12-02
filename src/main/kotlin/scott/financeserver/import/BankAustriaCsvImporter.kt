@@ -3,6 +3,7 @@ package scott.financeserver.import
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import java.math.BigDecimal
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,8 +30,16 @@ fun main() {
 }
 */
 fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) -> R) : R {
+    return runCatching {
+        parseBankAustria(bytes, Charsets.UTF_8, { it }).count() //syntax test
+        parseBankAustria(bytes, Charsets.UTF_8, block)
+    }.getOrElse {
+        parseBankAustria(bytes, Charsets.ISO_8859_1, block)
+    }
+}
+fun <R> parseBankAustria(bytes: ByteArray, charset: Charset, block : (Sequence<BankAustriaRow>) -> R) : R {
     var headers : List<String>? = null
-    return CSVParser(bytes.inputStream().reader(Charsets.UTF_8), CSVFormat.newFormat(';'))
+    return CSVParser(bytes.inputStream().reader(charset), CSVFormat.newFormat(';'))
         .iterator().asSequence().filter { r ->
             if (headers == null) {
                 headers = r.toList().map { it.trim() }.also {
@@ -55,7 +64,7 @@ fun <R> parseBankAustria(bytes: ByteArray, block : (Sequence<BankAustriaRow>) ->
                     else it.replace(",", "").toBigDecimal()
                 },
                 reason = it[REASON],
-                senderBic = it[SENDER_BIC]).also { println(it) }
+                senderBic = it[SENDER_BIC])
         }
         .let { block(it) }
 }

@@ -5,8 +5,6 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
-import scott.financeserver.data.model.Category;
-
 import java.util.UUID;
 
 /**
@@ -32,7 +30,7 @@ public class CategoryMatcher extends AbstractCustomEntityProxy {
     return id.getValue();
   }
 
-  public scott.financeserver.data.model.Category getCategory() {
+  public Category getCategory() {
     return super.getFromRefNode(category.refNode);
   }
 

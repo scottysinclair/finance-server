@@ -5,8 +5,6 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.RefNode;
 import scott.barleydb.api.core.proxy.RefNodeProxyHelper;
-import scott.financeserver.data.model.Account;
-
 import java.util.UUID;
 import java.util.Date;
 
@@ -55,7 +53,7 @@ public class Feed extends AbstractCustomEntityProxy {
     this.dateImported.setValue(dateImported);
   }
 
-  public scott.financeserver.data.model.Account getAccount() {
+  public Account getAccount() {
     return super.getFromRefNode(account.refNode);
   }
 

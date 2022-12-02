@@ -3,7 +3,6 @@ package scott.financeserver.data.dto;
 import scott.barleydb.api.dto.BaseDto;
 
 import scott.barleydb.api.dto.DtoList;
-import scott.financeserver.data.dto.CategoryMatcherDto;
 
 import java.util.UUID;
 
@@ -17,7 +16,7 @@ public class CategoryDto extends BaseDto {
 
   private UUID id;
   private String name;
-  private DtoList<scott.financeserver.data.dto.CategoryMatcherDto> matchers = new DtoList<>();
+  private DtoList<CategoryMatcherDto> matchers = new DtoList<>();
 
   public CategoryDto() {
   }

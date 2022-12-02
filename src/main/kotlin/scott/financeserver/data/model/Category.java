@@ -11,8 +11,6 @@ import scott.barleydb.api.core.entity.ValueNode;
 import scott.barleydb.api.core.proxy.AbstractCustomEntityProxy;
 import scott.barleydb.api.core.entity.ToManyNode;
 import scott.barleydb.api.core.proxy.ToManyNodeProxyHelper;
-import scott.financeserver.data.model.CategoryMatcher;
-
 import java.util.UUID;
 
 /**
@@ -46,10 +44,10 @@ public class Category extends AbstractCustomEntityProxy {
     this.name.setValue(name);
   }
 
-  public List<scott.financeserver.data.model.CategoryMatcher> getMatchers() {
+  public List<CategoryMatcher> getMatchers() {
     return super.getListProxy(matchers.toManyNode);
   }
-  public ObjectInputStream<scott.financeserver.data.model.CategoryMatcher> streamMatchers() throws BarleyDBRuntimeException {
+  public ObjectInputStream<CategoryMatcher> streamMatchers() throws BarleyDBRuntimeException {
     try {final QueryEntityInputStream in = matchers.toManyNode.stream();
          return new ObjectInputStream<>(in);
     }catch(Exception x) {
@@ -59,7 +57,7 @@ public class Category extends AbstractCustomEntityProxy {
     }
   }
 
-  public ObjectInputStream<scott.financeserver.data.model.CategoryMatcher> streamMatchers(QueryObject<CategoryMatcher> query) throws BarleyDBRuntimeException  {
+  public ObjectInputStream<CategoryMatcher> streamMatchers(QueryObject<CategoryMatcher> query) throws BarleyDBRuntimeException  {
     try { final QueryEntityInputStream in = matchers.toManyNode.stream(query);
          return new ObjectInputStream<>(in);
     }catch(Exception x) {

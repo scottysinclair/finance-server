@@ -143,7 +143,7 @@ fun <K,V> merge(a : Map<K,V>, b : Map<K,V>, valueReducer : (V, V) -> V) = (a.asS
 
 fun <T> ObjectInputStream<T>.toSequence() : Sequence<T> = generateSequence {
         read().also {
-            if (it == null) close().also { println("CLOSING") }
+            if (it == null) close()
         }
     }
 

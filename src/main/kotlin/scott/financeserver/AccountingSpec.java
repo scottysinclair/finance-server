@@ -26,7 +26,7 @@ public class AccountingSpec extends StaticDefinitions {
     /**
      * generate the query and model classes for the spec.
      */
-    public static void main(String args[]) {
+    public static void mains(String args[]) {
         GenerateModels.execute(AccountingSpec.class);
     }
 
@@ -114,31 +114,6 @@ public class AccountingSpec extends StaticDefinitions {
 
         //TODO: add index for contentHash
     }
-
-    @Entity("SS_DUPLICATES")
-    public static class Duplicates {
-        public static final NodeSpec id = uuidPrimaryKey();
-        public static final NodeSpec feedHash = mandatoryVarchar(40);
-        public static final NodeSpec feedRecordNumber = mandatoryIntValue();
-        public static final NodeSpec contentHash = mandatoryVarchar(40);
-        public static final NodeSpec content = mandatoryVarchar(8000);
-        public static final NodeSpec duplicate = mandatoryBoolean();
-        public static final UniqueConstraintSpec uniqueDuplicate = uniqueConstraint(feedHash, feedRecordNumber);
-    }
-
-    @Entity("SS_DUPLICATES2")
-    public static class Duplicates2 {
-        public static final NodeSpec id = uuidPrimaryKey();
-
-        public static final NodeSpec date = mandatoryTimestamp();
-
-        public static final NodeSpec amount = mandatoryDecimal(9, 2);
-
-        public static final NodeSpec duplicateTransaction = mandatoryVarchar(40);
-
-        public static final NodeSpec sourceTransaction = mandatoryVarchar(40);
-    }
-
 
     @Entity("SS_CATEGORY")
     public static class Category {
